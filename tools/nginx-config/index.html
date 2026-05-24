@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nginx Config Generator — Dayan Raj Tools</title>
+  <meta name="description" content="Graphically build nginx server configurations using drag and drop components.">
+  <link rel="canonical" href="https://dayanraj.com/tools/nginx-config/">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .tool-layout {
+      display: grid;
+      grid-template-columns: 235px 1fr 390px;
+      flex: 1;
+      min-height: 0;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+    }
+
+    /* ── Palette ── */
+    .palette {
+      background: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      overflow-y: auto;
+      padding: 0.85rem;
+    }
+    .palette-heading { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .palette-section {
+      font-size: 0.67rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #6c757d;
+      margin: 0.8rem 0 0.3rem;
+    }
+    .palette-item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.4rem 0.55rem;
+      margin-bottom: 0.22rem;
+      border-radius: 0.35rem;
+      border: 1px solid #dee2e6;
+      background: #fff;
+      cursor: grab;
+      font-size: 0.8rem;
+      user-select: none;
+      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .palette-item:hover { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,.13); }
+    .palette-item.dragging { opacity: 0.35; cursor: grabbing; }
+    .palette-item-name { flex: 1; font-size: 0.8rem; font-weight: 600; }
+    .palette-tip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 15px; height: 15px;
+      border-radius: 50%;
+      background: #e9ecef;
+      color: #6c757d;
+      font-size: 0.62rem;
+      font-weight: 700;
+      cursor: help;
+      line-height: 1;
+      transition: background 0.12s, color 0.12s;
+    }
+    .palette-tip:hover { background: #0d6efd; color: #fff; }
+    .palette-doc {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 15px; height: 15px;
+      border-radius: 0.2rem;
+      color: #adb5bd;
+      text-decoration: none;
+      transition: color 0.12s, background 0.12s;
+    }
+    .palette-doc:hover { color: #0d6efd; background: rgba(13,110,253,0.1); }
+    .palette-doc svg { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ── Canvas ── */
+    .canvas-area {
+      overflow-y: auto;
+      padding: 1.1rem;
+      background: #fff;
+    }
+    .drop-zone {
+      min-height: 180px;
+      border: 2px dashed #dee2e6;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .drop-zone.drag-over { border-color: #0d6efd; background: rgba(13,110,253,.04); }
+    .canvas-empty {
+      text-align: center;
+      color: #adb5bd;
+      padding: 2.5rem 1rem;
+      pointer-events: none;
+    }
+
+    /* ── Block cards ── */
+    .block-card {
+      border: 1px solid #dee2e6;
+      border-radius: 0.45rem;
+      margin-bottom: 0.6rem;
+      background: #fff;
+      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .block-card.selected { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,.18); }
+    .block-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.42rem 0.65rem;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+      border-radius: 0.45rem 0.45rem 0 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .block-card.selected .block-card-header { background: #e8f0ff; border-bottom-color: #b6d0ff; }
+    .block-card-title { font-size: 0.8rem; font-weight: 600; flex: 1; }
+    .block-actions { display: flex; gap: 0.2rem; }
+    .blk-btn {
+      border: none; background: none;
+      padding: 0.1rem 0.28rem;
+      border-radius: 0.22rem;
+      color: #6c757d;
+      cursor: pointer; font-size: 0.72rem; line-height: 1;
+    }
+    .blk-btn:hover { background: #e9ecef; color: #212529; }
+    .blk-btn.del:hover { background: #f8d7da; color: #842029; }
+    .block-body { padding: 0.65rem; }
+    .blk-field { margin-bottom: 0.45rem; }
+    .blk-field label { font-size: 0.72rem; font-weight: 500; color: #6c757d; display: block; margin-bottom: 0.15rem; }
+    .blk-field input, .blk-field select, .blk-field textarea { font-size: 0.78rem; padding: 0.28rem 0.45rem; }
+
+    /* Children drop zone inside cards */
+    .children-zone {
+      margin-top: 0.5rem;
+      border: 1.5px dashed #dee2e6;
+      border-radius: 0.35rem;
+      min-height: 52px;
+      padding: 0.4rem;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .children-zone.drag-over { border-color: #0d6efd; background: rgba(13,110,253,.04); }
+    .children-zone-hint { font-size: 0.68rem; color: #adb5bd; text-align: center; padding: 0.5rem 0; }
+
+    /* ── Type badges ── */
+    .tbadge {
+      font-size: 0.62rem; padding: 0.08rem 0.38rem;
+      border-radius: 1rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .tb-server   { background:#cfe2ff; color:#084298; }
+    .tb-location { background:#d1e7dd; color:#0a3622; }
+    .tb-upstream { background:#fff3cd; color:#664d03; }
+    .tb-ssl      { background:#f8d7da; color:#842029; }
+    .tb-proxy    { background:#e2d9f3; color:#432874; }
+    .tb-static   { background:#d1e7dd; color:#0a3622; }
+    .tb-gzip     { background:#e2e3e5; color:#41464b; }
+    .tb-rate     { background:#ffe5d9; color:#7d3c0a; }
+    .tb-redirect { background:#fdedec; color:#78281f; }
+    .tb-header   { background:#d6eaf8; color:#154360; }
+    .tb-error    { background:#f9ebea; color:#641e16; }
+    .tb-log      { background:#e2e3e5; color:#41464b; }
+
+    /* ── Config output panel ── */
+    .config-panel {
+      display: flex; flex-direction: column;
+      background: #1e1e2e; color: #cdd6f4;
+      border-left: 1px solid #313244;
+      overflow: hidden;
+    }
+    .config-panel-head {
+      padding: 0.65rem 0.9rem;
+      border-bottom: 1px solid #313244;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .config-panel-title { font-size: 0.8rem; font-weight: 600; color: #cba6f7; }
+    .config-output {
+      flex: 1; overflow-y: auto;
+      padding: 0.9rem 1rem;
+      margin: 0;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.76rem; line-height: 1.72;
+      background: transparent; color: inherit;
+      border: none; white-space: pre; tab-size: 4;
+    }
+    .config-footer {
+      padding: 0.6rem 0.9rem;
+      border-top: 1px solid #313244;
+      display: flex; gap: 0.5rem; flex-shrink: 0;
+    }
+
+    /* ── Toast ── */
+    #toastContainer { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; }
+
+    @media (max-width: 991px) {
+      .tool-layout { grid-template-columns: 1fr; height: auto; overflow: auto; }
+      .config-panel { min-height: 280px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg bg-dark navbar-dark">
+    <div class="container-fluid px-3">
+      <a class="navbar-brand fw-semibold" href="/">Dayan Raj</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <span class="navbar-text text-white-50 small">/ Tools / Nginx Config Generator</span>
+          </li>
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="/about.html">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="https://github.com/koavan" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="tool-layout">
+
+    <!-- Palette -->
+    <div class="palette" id="palette">
+      <div class="palette-heading">Components</div>
+
+      <div class="palette-section">Top-level</div>
+
+      <div class="palette-item" draggable="true" data-type="server">
+        <span class="palette-item-name">⬜ Server Block</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_core_module.html#server" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="The main container for one virtual host. All rules for a domain or IP address live inside here.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="upstream">
+        <span class="palette-item-name">⬆ Upstream</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_upstream_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Defines a named pool of backend servers for load balancing. Reference the pool name in a Proxy Pass block.">?</span>
+      </div>
+
+      <div class="palette-section">Inside Server</div>
+
+      <div class="palette-item" draggable="true" data-type="location">
+        <span class="palette-item-name">📍 Location Block</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Matches incoming URL paths and applies rules to those requests. Nest inside a Server Block.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="ssl">
+        <span class="palette-item-name">🔒 SSL / TLS</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_ssl_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Enables HTTPS. Adds 'listen 443 ssl' and injects your certificate and private key paths.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="gzip">
+        <span class="palette-item-name">🗜 Gzip</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_gzip_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Compresses text responses (HTML, CSS, JS) before sending them, reducing bandwidth and speeding up page loads.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="ratelimit">
+        <span class="palette-item-name">⏱ Rate Limit</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_limit_req_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Throttles incoming requests per IP using nginx's limit_req module. Protects against abuse and traffic spikes.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="errorpage">
+        <span class="palette-item-name">⚠ Error Page</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_core_module.html#error_page" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Maps HTTP error codes (e.g. 404, 500) to a custom response page URI instead of the nginx default.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="accesslog">
+        <span class="palette-item-name">📋 Access Log</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_log_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Sets the file path and log format for request logging. Disable entirely to silence logs for this server.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="header">
+        <span class="palette-item-name">📨 Add Header</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_headers_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Sends a custom HTTP response header on all requests (e.g. security headers like X-Frame-Options or CORS).">?</span>
+      </div>
+
+      <div class="palette-section">Inside Location</div>
+
+      <div class="palette-item" draggable="true" data-type="proxy">
+        <span class="palette-item-name">🔀 Proxy Pass</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Forwards matched requests to a backend URL or upstream pool. The core directive for a reverse proxy setup.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="static">
+        <span class="palette-item-name">📁 Static Files</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_core_module.html#root" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Serves files directly from disk. Sets a root path, expiry duration, and cache-control headers for assets.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="redirect">
+        <span class="palette-item-name">↩ Redirect</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_rewrite_module.html#return" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Sends the browser a redirect response (301 permanent, 302 temporary, etc.) to a different URL.">?</span>
+      </div>
+      <div class="palette-item" draggable="true" data-type="header2">
+        <span class="palette-item-name">📨 Add Header</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_headers_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Sends a custom HTTP response header only for requests matching this location (e.g. Cache-Control on /assets).">?</span>
+      </div>
+
+      <div class="palette-section mt-3">Quick templates</div>
+
+      <div class="palette-item" draggable="false" style="cursor:pointer;" onclick="loadTemplate('reverse-proxy')">
+        <span class="palette-item-name">⚡ Reverse proxy</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_proxy_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Upstream pool + server block + location + proxy_pass, pre-wired and ready to configure.">?</span>
+      </div>
+      <div class="palette-item" draggable="false" style="cursor:pointer;" onclick="loadTemplate('static-ssl')">
+        <span class="palette-item-name">⚡ Static site + SSL</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_ssl_module.html" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="HTTPS server with SSL config, a catch-all location for static files, gzip, and a custom error page.">?</span>
+      </div>
+      <div class="palette-item" draggable="false" style="cursor:pointer;" onclick="loadTemplate('http-redirect')">
+        <span class="palette-item-name">⚡ HTTP → HTTPS redirect</span>
+        <a class="palette-doc" href="https://nginx.org/en/docs/http/ngx_http_rewrite_module.html#return" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="nginx docs"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="A server block on port 80 that issues a 301 redirect to the HTTPS equivalent of every request.">?</span>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas-area">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div>
+          <span class="fw-semibold" style="font-size:0.88rem;">Configuration Canvas</span>
+          <span class="text-muted ms-2" style="font-size:0.75rem;">drag components from the left</span>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="clearAll()">Clear all</button>
+      </div>
+      <div class="drop-zone" id="rootZone">
+        <div class="canvas-empty" id="canvasEmpty">
+          <div style="font-size:2.2rem;">⚙</div>
+          <div class="mt-2 fw-semibold">Drag a component here to start</div>
+          <div class="small mt-1">Or pick a quick template from the left panel</div>
+        </div>
+        <div id="blockList"></div>
+      </div>
+    </div>
+
+    <!-- Config output -->
+    <div class="config-panel">
+      <div class="config-panel-head">
+        <span class="config-panel-title">nginx.conf</span>
+        <span class="badge bg-secondary" id="blockCount" style="font-size:0.68rem;">0 blocks</span>
+      </div>
+      <pre class="config-output" id="configOutput"># Your nginx config will appear here.
+# Drag a Server Block onto the canvas to begin.</pre>
+      <div class="config-footer">
+        <button class="btn btn-sm btn-outline-light" onclick="copyConfig()">Copy</button>
+        <button class="btn btn-sm btn-outline-light" onclick="downloadConfig()">Download .conf</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  // ─── Block definitions ────────────────────────────────────────────────────
+  const DEFS = {
+    server: {
+      label: 'Server Block', icon: '⬜', badge: 'tb-server', badgeText: 'server',
+      parentTypes: [null],
+      childTypes: ['location','ssl','gzip','ratelimit','errorpage','accesslog','header'],
+      fields: [
+        { k:'listen',      label:'Listen',        t:'text',     d:'80' },
+        { k:'server_name', label:'Server name',   t:'text',     d:'example.com' },
+        { k:'root',        label:'Document root', t:'text',     d:'/var/www/html' },
+        { k:'index',       label:'Index files',   t:'text',     d:'index.html index.htm' },
+      ],
+    },
+    location: {
+      label: 'Location Block', icon: '📍', badge: 'tb-location', badgeText: 'location',
+      parentTypes: ['server'],
+      childTypes: ['proxy','static','redirect','header','gzip'],
+      fields: [
+        { k:'modifier', label:'Modifier',   t:'select', d:'',    opts:['','=','~','~*','^~'] },
+        { k:'path',     label:'Path',       t:'text',   d:'/' },
+        { k:'try_files',label:'try_files',  t:'text',   d:'$uri $uri/ =404' },
+      ],
+    },
+    upstream: {
+      label: 'Upstream', icon: '⬆', badge: 'tb-upstream', badgeText: 'upstream',
+      parentTypes: [null],
+      childTypes: [],
+      fields: [
+        { k:'name',    label:'Name',               t:'text',     d:'backend' },
+        { k:'method',  label:'LB method',          t:'select',   d:'round-robin', opts:['round-robin','least_conn','ip_hash'] },
+        { k:'servers', label:'Servers (one/line)',  t:'textarea', d:'localhost:3000\nlocalhost:3001' },
+      ],
+    },
+    ssl: {
+      label: 'SSL / TLS', icon: '🔒', badge: 'tb-ssl', badgeText: 'ssl',
+      parentTypes: ['server'],
+      childTypes: [],
+      fields: [
+        { k:'cert',      label:'Certificate path',  t:'text',     d:'/etc/letsencrypt/live/example.com/fullchain.pem' },
+        { k:'key',       label:'Private key path',  t:'text',     d:'/etc/letsencrypt/live/example.com/privkey.pem' },
+        { k:'protocols', label:'Protocols',         t:'text',     d:'TLSv1.2 TLSv1.3' },
+        { k:'hsts',      label:'Enable HSTS',       t:'checkbox', d:true },
+      ],
+    },
+    proxy: {
+      label: 'Proxy Pass', icon: '🔀', badge: 'tb-proxy', badgeText: 'proxy',
+      parentTypes: ['location'],
+      childTypes: [],
+      fields: [
+        { k:'pass',      label:'proxy_pass URL',     t:'text',     d:'http://localhost:3000' },
+        { k:'host',      label:'Host header',        t:'text',     d:'$host' },
+        { k:'real_ip',   label:'Forward real IP',    t:'checkbox', d:true },
+        { k:'ws',        label:'WebSocket support',  t:'checkbox', d:false },
+      ],
+    },
+    static: {
+      label: 'Static Files', icon: '📁', badge: 'tb-static', badgeText: 'static',
+      parentTypes: ['location'],
+      childTypes: [],
+      fields: [
+        { k:'root',    label:'Root path',    t:'text', d:'/var/www/html' },
+        { k:'expires', label:'Expires',      t:'text', d:'30d' },
+      ],
+    },
+    gzip: {
+      label: 'Gzip', icon: '🗜', badge: 'tb-gzip', badgeText: 'gzip',
+      parentTypes: ['server','location'],
+      childTypes: [],
+      fields: [
+        { k:'types',    label:'MIME types',     t:'text', d:'text/plain text/css application/json application/javascript text/xml' },
+        { k:'min_len',  label:'Min length',     t:'text', d:'1000' },
+        { k:'level',    label:'Level (1-9)',    t:'text', d:'6' },
+      ],
+    },
+    ratelimit: {
+      label: 'Rate Limit', icon: '⏱', badge: 'tb-rate', badgeText: 'rate limit',
+      parentTypes: ['server'],
+      childTypes: [],
+      fields: [
+        { k:'zone',    label:'Zone name',  t:'text', d:'api' },
+        { k:'key',     label:'Key',        t:'text', d:'$binary_remote_addr' },
+        { k:'rate',    label:'Rate',       t:'text', d:'10r/s' },
+        { k:'burst',   label:'Burst',      t:'text', d:'20' },
+        { k:'nodelay', label:'nodelay',    t:'checkbox', d:true },
+      ],
+    },
+    redirect: {
+      label: 'Redirect', icon: '↩', badge: 'tb-redirect', badgeText: 'redirect',
+      parentTypes: ['server','location'],
+      childTypes: [],
+      fields: [
+        { k:'code', label:'HTTP code',    t:'select', d:'301', opts:['301','302','307','308'] },
+        { k:'to',   label:'Redirect to', t:'text',   d:'https://example.com$request_uri' },
+      ],
+    },
+    header: {
+      label: 'Add Header', icon: '📨', badge: 'tb-header', badgeText: 'header',
+      parentTypes: ['server','location'],
+      childTypes: [],
+      fields: [
+        { k:'name',  label:'Header name', t:'text', d:'X-Frame-Options' },
+        { k:'value', label:'Value',       t:'text', d:'SAMEORIGIN' },
+      ],
+    },
+    header2: { // alias for palette "inside location" — same as header
+      label: 'Add Header', icon: '📨', badge: 'tb-header', badgeText: 'header',
+      parentTypes: ['location'],
+      childTypes: [],
+      fields: [
+        { k:'name',  label:'Header name', t:'text', d:'Cache-Control' },
+        { k:'value', label:'Value',       t:'text', d:'no-store' },
+      ],
+    },
+    errorpage: {
+      label: 'Error Page', icon: '⚠', badge: 'tb-error', badgeText: 'error page',
+      parentTypes: ['server'],
+      childTypes: [],
+      fields: [
+        { k:'codes', label:'Error codes', t:'text', d:'404' },
+        { k:'uri',   label:'URI',         t:'text', d:'/404.html' },
+      ],
+    },
+    accesslog: {
+      label: 'Access Log', icon: '📋', badge: 'tb-log', badgeText: 'access log',
+      parentTypes: ['server'],
+      childTypes: [],
+      fields: [
+        { k:'path',    label:'Log path', t:'text',     d:'/var/log/nginx/access.log' },
+        { k:'format',  label:'Format',   t:'text',     d:'main' },
+        { k:'enabled', label:'Enabled',  t:'checkbox', d:true },
+      ],
+    },
+  };
+
+  // ─── State ───────────────────────────────────────────────────────────────
+  let blocks = [];
+  let selectedId = null;
+  let idSeq = 0;
+  let dragType = null;
+
+  function uid() { return 'b' + (++idSeq); }
+
+  // ─── Block ops ───────────────────────────────────────────────────────────
+  function mkBlock(type, parentId) {
+    const def = DEFS[type];
+    const fields = {};
+    def.fields.forEach(f => { fields[f.k] = f.d; });
+    return { id: uid(), type, parentId: parentId || null, fields, collapsed: false };
+  }
+
+  function addBlock(type, parentId) {
+    const b = mkBlock(type, parentId || null);
+    blocks.push(b);
+    render();
+    selectedId = b.id;
+    render();
+    return b;
+  }
+
+  function deleteBlock(id) {
+    const desc = allDescendants(id);
+    desc.push(id);
+    blocks = blocks.filter(b => !desc.includes(b.id));
+    if (desc.includes(selectedId)) selectedId = null;
+    render();
+  }
+
+  function allDescendants(id) {
+    const direct = blocks.filter(b => b.parentId === id).map(b => b.id);
+    return direct.flatMap(cid => [cid, ...allDescendants(cid)]);
+  }
+
+  function childrenOf(pid) { return blocks.filter(b => b.parentId === pid); }
+  function topLevel()      { return blocks.filter(b => b.parentId === null); }
+
+  function clearAll() {
+    if (!blocks.length) return;
+    if (!confirm('Remove all blocks?')) return;
+    blocks = []; selectedId = null; render();
+  }
+
+  function updateField(id, k, v) {
+    const b = blocks.find(b => b.id === id);
+    if (b) { b.fields[k] = v; refreshConfig(); }
+  }
+
+  function toggleCollapse(id) {
+    const b = blocks.find(b => b.id === id);
+    if (b) { b.collapsed = !b.collapsed; render(); }
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────
+  function render() {
+    const list = document.getElementById('blockList');
+    const empty = document.getElementById('canvasEmpty');
+    const top = topLevel();
+    empty.style.display = top.length ? 'none' : 'block';
+    list.innerHTML = '';
+    top.forEach(b => list.appendChild(mkCardEl(b)));
+    document.getElementById('blockCount').textContent = blocks.length + ' block' + (blocks.length !== 1 ? 's' : '');
+    refreshConfig();
+  }
+
+  function mkCardEl(block) {
+    const def = DEFS[block.type];
+    const children = childrenOf(block.id);
+    const card = document.createElement('div');
+    card.className = 'block-card' + (block.id === selectedId ? ' selected' : '');
+    card.dataset.id = block.id;
+
+    // header
+    const hdr = document.createElement('div');
+    hdr.className = 'block-card-header';
+    hdr.innerHTML =
+      `<span>${def.icon}</span>` +
+      `<span class="block-card-title">${def.label}</span>` +
+      `<span class="tbadge ${def.badge}">${def.badgeText}</span>` +
+      `<div class="block-actions ms-1">` +
+        `<button class="blk-btn" onclick="toggleCollapse('${block.id}')">${block.collapsed ? '▶' : '▼'}</button>` +
+        `<button class="blk-btn del" onclick="event.stopPropagation();deleteBlock('${block.id}')">✕</button>` +
+      `</div>`;
+    hdr.addEventListener('click', e => {
+      if (e.target.closest('.block-actions')) return;
+      selectedId = block.id; render();
+    });
+    card.appendChild(hdr);
+
+    if (!block.collapsed) {
+      const body = document.createElement('div');
+      body.className = 'block-body';
+
+      def.fields.forEach(f => {
+        const fd = document.createElement('div');
+        fd.className = 'blk-field';
+        const eid = `${block.id}_${f.k}`;
+        const val = block.fields[f.k];
+
+        if (f.t === 'checkbox') {
+          fd.innerHTML =
+            `<div class="form-check">` +
+            `<input class="form-check-input" type="checkbox" id="${eid}"${val ? ' checked' : ''} ` +
+            `onchange="updateField('${block.id}','${f.k}',this.checked)">` +
+            `<label class="form-check-label" for="${eid}" style="font-size:.72rem">${f.label}</label>` +
+            `</div>`;
+        } else if (f.t === 'select') {
+          const opts = f.opts.map(o => `<option${val===o?' selected':''}>${o||'(default)'}</option>`).join('');
+          fd.innerHTML = `<label>${f.label}</label><select class="form-select form-select-sm" onchange="updateField('${block.id}','${f.k}',this.value)">${opts}</select>`;
+        } else if (f.t === 'textarea') {
+          fd.innerHTML = `<label>${f.label}</label><textarea class="form-control form-control-sm" rows="2" oninput="updateField('${block.id}','${f.k}',this.value)">${ea(val)}</textarea>`;
+        } else {
+          fd.innerHTML = `<label>${f.label}</label><input type="text" class="form-control form-control-sm" value="${ea(val)}" oninput="updateField('${block.id}','${f.k}',this.value)">`;
+        }
+        body.appendChild(fd);
+      });
+
+      // children drop zone
+      if (def.childTypes.length > 0) {
+        const zone = document.createElement('div');
+        zone.className = 'children-zone';
+        zone.dataset.pid = block.id;
+        if (!children.length) {
+          zone.innerHTML = `<div class="children-zone-hint">Drop here: ${def.childTypes.join(', ')}</div>`;
+        } else {
+          children.forEach(c => zone.appendChild(mkCardEl(c)));
+        }
+        wireDropZone(zone, block.id);
+        body.appendChild(zone);
+      }
+
+      card.appendChild(body);
+    }
+    return card;
+  }
+
+  function ea(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ─── Config generation ────────────────────────────────────────────────────
+  function refreshConfig() {
+    document.getElementById('configOutput').textContent = buildConfig();
+  }
+
+  function buildConfig() {
+    if (!blocks.length) return '# Your nginx config will appear here.\n# Drag a Server Block onto the canvas to begin.';
+    const lines = [];
+    const top = topLevel();
+
+    top.filter(b => b.type === 'upstream').forEach(b => { lines.push(...genBlock(b, 0)); lines.push(''); });
+    top.filter(b => b.type === 'server').forEach(b => { lines.push(...genBlock(b, 0)); lines.push(''); });
+
+    return lines.join('\n').trimEnd();
+  }
+
+  function i(n) { return '    '.repeat(n); }
+
+  function genBlock(b, d) {
+    const f = b.fields;
+    const ch = childrenOf(b.id);
+    const L = [];
+
+    switch (b.type) {
+      case 'server':
+        L.push(i(d)+'server {');
+        L.push(i(d+1)+`listen ${f.listen};`);
+        L.push(i(d+1)+`server_name ${f.server_name};`);
+        if (f.root)  L.push(i(d+1)+`root ${f.root};`);
+        if (f.index) L.push(i(d+1)+`index ${f.index};`);
+        ch.forEach(c => { L.push(''); L.push(...genBlock(c, d+1)); });
+        L.push(i(d)+'}');
+        break;
+
+      case 'location': {
+        const mod = f.modifier ? f.modifier + ' ' : '';
+        L.push(i(d)+`location ${mod}${f.path} {`);
+        const hasProxy    = ch.some(c => c.type === 'proxy');
+        const hasRedirect = ch.some(c => c.type === 'redirect');
+        if (f.try_files && !hasProxy && !hasRedirect) L.push(i(d+1)+`try_files ${f.try_files};`);
+        ch.forEach(c => L.push(...genBlock(c, d+1)));
+        L.push(i(d)+'}');
+        break;
+      }
+
+      case 'upstream':
+        L.push(i(d)+`upstream ${f.name} {`);
+        if (f.method !== 'round-robin') L.push(i(d+1)+`${f.method};`);
+        String(f.servers).split('\n').map(s=>s.trim()).filter(Boolean).forEach(s => L.push(i(d+1)+`server ${s};`));
+        L.push(i(d)+'}');
+        break;
+
+      case 'ssl':
+        L.push(i(d)+'# SSL');
+        L.push(i(d)+'listen 443 ssl;');
+        L.push(i(d)+`ssl_certificate ${f.cert};`);
+        L.push(i(d)+`ssl_certificate_key ${f.key};`);
+        if (f.protocols) L.push(i(d)+`ssl_protocols ${f.protocols};`);
+        L.push(i(d)+'ssl_prefer_server_ciphers on;');
+        if (f.hsts) L.push(i(d)+'add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;');
+        break;
+
+      case 'proxy':
+        L.push(i(d)+`proxy_pass ${f.pass};`);
+        L.push(i(d)+`proxy_set_header Host ${f.host};`);
+        L.push(i(d)+'proxy_set_header X-Real-IP $remote_addr;');
+        if (f.real_ip) L.push(i(d)+'proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;');
+        if (f.ws) {
+          L.push(i(d)+'proxy_http_version 1.1;');
+          L.push(i(d)+'proxy_set_header Upgrade $http_upgrade;');
+          L.push(i(d)+'proxy_set_header Connection "upgrade";');
+        }
+        break;
+
+      case 'static':
+        L.push(i(d)+`root ${f.root};`);
+        if (f.expires) {
+          L.push(i(d)+`expires ${f.expires};`);
+          L.push(i(d)+'add_header Cache-Control "public";');
+        }
+        break;
+
+      case 'gzip':
+        L.push(i(d)+'gzip on;');
+        if (f.types)   L.push(i(d)+`gzip_types ${f.types};`);
+        if (f.min_len) L.push(i(d)+`gzip_min_length ${f.min_len};`);
+        if (f.level)   L.push(i(d)+`gzip_comp_level ${f.level};`);
+        break;
+
+      case 'ratelimit':
+        L.push(i(d)+'# limit_req_zone goes in the http {} block:');
+        L.push(i(d)+`# limit_req_zone ${f.key} zone=${f.zone}:10m rate=${f.rate};`);
+        L.push(i(d)+`limit_req zone=${f.zone} burst=${f.burst}${f.nodelay?' nodelay':''};`);
+        break;
+
+      case 'redirect':
+        L.push(i(d)+`return ${f.code} ${f.to};`);
+        break;
+
+      case 'header':
+      case 'header2':
+        L.push(i(d)+`add_header ${f.name} "${f.value}";`);
+        break;
+
+      case 'errorpage':
+        L.push(i(d)+`error_page ${f.codes} ${f.uri};`);
+        break;
+
+      case 'accesslog':
+        L.push(f.enabled ? i(d)+`access_log ${f.path} ${f.format};` : i(d)+'access_log off;');
+        break;
+    }
+    return L;
+  }
+
+  // ─── Drag and Drop ────────────────────────────────────────────────────────
+  document.querySelectorAll('.palette-item[draggable="true"]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      dragType = el.dataset.type;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    el.addEventListener('dragend', () => { el.classList.remove('dragging'); });
+  });
+
+  function wireDropZone(el, parentId) {
+    el.addEventListener('dragover', e => {
+      if (!dragType) return;
+      e.preventDefault(); e.stopPropagation();
+      const def = DEFS[dragType];
+      const parentType = parentId ? (blocks.find(b=>b.id===parentId)||{}).type : null;
+      if (def && def.parentTypes.includes(parentType)) {
+        el.classList.add('drag-over');
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      el.classList.remove('drag-over');
+      if (!dragType) return;
+      const def = DEFS[dragType];
+      const parentType = parentId ? (blocks.find(b=>b.id===parentId)||{}).type : null;
+      if (def && def.parentTypes.includes(parentType)) {
+        addBlock(dragType, parentId || null);
+      } else if (def) {
+        toast(`"${def.label}" cannot go here. Valid parent: ${def.parentTypes.map(p=>p||'top-level').join(', ')}.`);
+      }
+      dragType = null;
+    });
+  }
+
+  wireDropZone(document.getElementById('rootZone'), null);
+
+  // ─── Templates ────────────────────────────────────────────────────────────
+  function loadTemplate(name) {
+    if (blocks.length && !confirm('Replace current canvas with this template?')) return;
+    blocks = []; selectedId = null; idSeq = 0;
+
+    if (name === 'reverse-proxy') {
+      const up  = mkBlock('upstream', null);
+      up.fields.name = 'app'; up.fields.servers = 'localhost:3000';
+      const srv = mkBlock('server', null);
+      srv.fields.listen = '80'; srv.fields.server_name = 'app.example.com'; srv.fields.root = '';
+      const loc = mkBlock('location', srv.id);
+      loc.fields.path = '/'; loc.fields.try_files = '';
+      const prx = mkBlock('proxy', loc.id);
+      prx.fields.pass = 'http://app'; prx.fields.ws = true;
+      const gz  = mkBlock('gzip', srv.id);
+      const hdr = mkBlock('header', srv.id);
+      hdr.fields.name = 'X-Frame-Options'; hdr.fields.value = 'SAMEORIGIN';
+      blocks = [up, srv, loc, prx, gz, hdr];
+    }
+
+    if (name === 'static-ssl') {
+      const srv = mkBlock('server', null);
+      srv.fields.listen = '443'; srv.fields.server_name = 'static.example.com';
+      const ssl = mkBlock('ssl', srv.id);
+      const loc = mkBlock('location', srv.id);
+      loc.fields.path = '/'; loc.fields.try_files = '$uri $uri/ =404';
+      const gz  = mkBlock('gzip', srv.id);
+      const err = mkBlock('errorpage', srv.id);
+      blocks = [srv, ssl, loc, gz, err];
+    }
+
+    if (name === 'http-redirect') {
+      const srv = mkBlock('server', null);
+      srv.fields.listen = '80'; srv.fields.server_name = 'example.com';
+      srv.fields.root = ''; srv.fields.index = '';
+      const loc = mkBlock('location', srv.id);
+      loc.fields.path = '/'; loc.fields.try_files = '';
+      const rdr = mkBlock('redirect', loc.id);
+      rdr.fields.code = '301'; rdr.fields.to = 'https://example.com$request_uri';
+      blocks = [srv, loc, rdr];
+    }
+
+    render();
+  }
+
+  // ─── Clipboard / download ─────────────────────────────────────────────────
+  function copyConfig() {
+    const text = document.getElementById('configOutput').textContent;
+    navigator.clipboard.writeText(text)
+      .then(() => toast('Copied to clipboard!'))
+      .catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove(); toast('Copied!');
+      });
+  }
+
+  function downloadConfig() {
+    const text = document.getElementById('configOutput').textContent;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type:'text/plain'}));
+    a.download = 'nginx.conf'; a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function toast(msg) {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = 'toast align-items-center text-bg-warning border-0 show mb-2';
+    t.setAttribute('role','alert');
+    t.innerHTML = `<div class="d-flex"><div class="toast-body" style="font-size:.8rem">${ea(msg)}</div><button type="button" class="btn-close me-2 m-auto" onclick="this.closest('.toast').remove()"></button></div>`;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el =>
+    new bootstrap.Tooltip(el, { trigger: 'hover', delay: { show: 100, hide: 0 } })
+  );
+
+  render();
+  </script>
+</body>
+</html>
