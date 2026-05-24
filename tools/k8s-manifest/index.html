@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kubernetes Manifest Generator — Dayan Raj Tools</title>
+  <meta name="description" content="Graphically build Kubernetes manifests using drag and drop components. Generates ready-to-use YAML.">
+  <link rel="canonical" href="https://dayanraj.com/tools/k8s-manifest/">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .tool-layout {
+      display: grid;
+      grid-template-columns: 245px 1fr 430px;
+      flex: 1;
+      min-height: 0;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+    }
+
+    /* ── Palette ── */
+    .palette {
+      background: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      overflow-y: auto;
+      padding: 0.85rem;
+    }
+    .palette-heading { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .palette-section {
+      font-size: 0.67rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #6c757d; margin: 0.8rem 0 0.3rem;
+    }
+    .palette-item {
+      display: flex; flex-direction: row; align-items: center; gap: 0.45rem;
+      padding: 0.4rem 0.55rem; margin-bottom: 0.22rem;
+      border-radius: 0.35rem; border: 1px solid #dee2e6; background: #fff;
+      cursor: grab; font-size: 0.8rem; user-select: none;
+      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .palette-item:hover { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,.13); }
+    .palette-item.dragging { opacity: 0.35; cursor: grabbing; }
+    .palette-item-name { flex: 1; font-size: 0.8rem; font-weight: 600; }
+    .palette-tip {
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0; width: 15px; height: 15px; border-radius: 50%;
+      background: #e9ecef; color: #6c757d; font-size: 0.62rem; font-weight: 700;
+      cursor: help; line-height: 1; transition: background 0.12s, color 0.12s;
+    }
+    .palette-tip:hover { background: #0d6efd; color: #fff; }
+    .palette-doc {
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0; width: 15px; height: 15px; border-radius: 0.2rem;
+      color: #adb5bd; text-decoration: none; transition: color 0.12s, background 0.12s;
+    }
+    .palette-doc:hover { color: #0d6efd; background: rgba(13,110,253,0.1); }
+    .palette-doc svg { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ── Canvas ── */
+    .canvas-area { overflow-y: auto; padding: 1.1rem; background: #fff; }
+    .drop-zone {
+      min-height: 180px; border: 2px dashed #dee2e6; border-radius: 0.5rem;
+      padding: 0.75rem; transition: border-color 0.12s, background 0.12s;
+    }
+    .drop-zone.drag-over { border-color: #0d6efd; background: rgba(13,110,253,.04); }
+    .canvas-empty { text-align: center; color: #adb5bd; padding: 2.5rem 1rem; pointer-events: none; }
+
+    /* ── Block cards ── */
+    .block-card {
+      border: 1px solid #dee2e6; border-radius: 0.45rem; margin-bottom: 0.6rem;
+      background: #fff; transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .block-card.selected { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,.18); }
+    .block-card-header {
+      display: flex; align-items: center; gap: 0.4rem; padding: 0.42rem 0.65rem;
+      background: #f8f9fa; border-bottom: 1px solid #dee2e6;
+      border-radius: 0.45rem 0.45rem 0 0; cursor: pointer; user-select: none;
+    }
+    .block-card.selected .block-card-header { background: #e8f0ff; border-bottom-color: #b6d0ff; }
+    .block-card-title { font-size: 0.8rem; font-weight: 600; flex: 1; }
+    .block-actions { display: flex; gap: 0.2rem; }
+    .blk-btn {
+      border: none; background: none; padding: 0.1rem 0.28rem; border-radius: 0.22rem;
+      color: #6c757d; cursor: pointer; font-size: 0.72rem; line-height: 1;
+    }
+    .blk-btn:hover { background: #e9ecef; color: #212529; }
+    .blk-btn.del:hover { background: #f8d7da; color: #842029; }
+    .block-body { padding: 0.65rem; }
+    .blk-field { margin-bottom: 0.45rem; }
+    .blk-field label { font-size: 0.72rem; font-weight: 500; color: #6c757d; display: block; margin-bottom: 0.15rem; }
+    .blk-field input, .blk-field select, .blk-field textarea { font-size: 0.78rem; padding: 0.28rem 0.45rem; }
+    .children-zone {
+      margin-top: 0.5rem; border: 1.5px dashed #dee2e6; border-radius: 0.35rem;
+      min-height: 52px; padding: 0.4rem; transition: border-color 0.12s, background 0.12s;
+    }
+    .children-zone.drag-over { border-color: #0d6efd; background: rgba(13,110,253,.04); }
+    .children-zone-hint { font-size: 0.68rem; color: #adb5bd; text-align: center; padding: 0.5rem 0; }
+
+    /* ── Type badges ── */
+    .tbadge {
+      font-size: 0.62rem; padding: 0.08rem 0.38rem; border-radius: 1rem;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
+    }
+    .tb-namespace          { background:#cfe2ff; color:#084298; }
+    .tb-pod                { background:#dbeafe; color:#1e3a5f; }
+    .tb-deployment         { background:#e2d9f3; color:#432874; }
+    .tb-statefulset        { background:#ede9fe; color:#4c1d95; }
+    .tb-daemonset          { background:#fae8ff; color:#701a75; }
+    .tb-job                { background:#fef9c3; color:#713f12; }
+    .tb-cronjob            { background:#fef3c7; color:#78350f; }
+    .tb-service            { background:#d1e7dd; color:#0a3622; }
+    .tb-ingress            { background:#d6eaf8; color:#154360; }
+    .tb-networkpolicy      { background:#fee2e2; color:#7f1d1d; }
+    .tb-configmap          { background:#fff3cd; color:#664d03; }
+    .tb-secret             { background:#f8d7da; color:#842029; }
+    .tb-limitrange         { background:#fce7f3; color:#831843; }
+    .tb-resourcequota      { background:#ffe4e6; color:#881337; }
+    .tb-pvc                { background:#ffe5d9; color:#7d3c0a; }
+    .tb-pv                 { background:#fed7aa; color:#7c2d12; }
+    .tb-storageclass       { background:#ffedd5; color:#9a3412; }
+    .tb-serviceaccount     { background:#d1ecf1; color:#0c5460; }
+    .tb-hpa                { background:#fce4ec; color:#880e4f; }
+    .tb-pdb                { background:#e0f2fe; color:#075985; }
+    .tb-role               { background:#e0e7ff; color:#3730a3; }
+    .tb-clusterrole        { background:#c7d2fe; color:#3730a3; }
+    .tb-rolebinding        { background:#fef3c7; color:#92400e; }
+    .tb-clusterrolebinding { background:#fde68a; color:#78350f; }
+    .tb-policyrule         { background:#d1fae5; color:#065f46; }
+    .tb-subject            { background:#ccfbf1; color:#134e4a; }
+    .tb-container          { background:#e8f5e9; color:#1b5e20; }
+    .tb-initcontainer      { background:#e3f2fd; color:#0d47a1; }
+    .tb-volume             { background:#e2e3e5; color:#41464b; }
+    .tb-vct                { background:#f5f3ff; color:#4c1d95; }
+    .tb-containerport      { background:#d1e7dd; color:#0a3622; }
+    .tb-envvar             { background:#fff3cd; color:#664d03; }
+    .tb-volumemount        { background:#fce4ec; color:#880e4f; }
+    .tb-probe              { background:#f3e5f5; color:#4a148c; }
+    .tb-resources          { background:#e8eaf6; color:#1a237e; }
+
+    /* ── YAML output panel ── */
+    .config-panel {
+      display: flex; flex-direction: column; background: #1e1e2e; color: #cdd6f4;
+      border-left: 1px solid #313244; overflow: hidden;
+    }
+    .config-panel-head {
+      padding: 0.65rem 0.9rem; border-bottom: 1px solid #313244;
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .config-panel-title { font-size: 0.8rem; font-weight: 600; color: #cba6f7; }
+    .config-output {
+      flex: 1; overflow-y: auto; padding: 0.9rem 1rem; margin: 0;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.76rem; line-height: 1.72; background: transparent; color: inherit;
+      border: none; white-space: pre; tab-size: 2;
+    }
+    .config-footer {
+      padding: 0.6rem 0.9rem; border-top: 1px solid #313244;
+      display: flex; gap: 0.5rem; flex-shrink: 0;
+    }
+    #toastContainer { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; }
+
+    @media (max-width: 991px) {
+      .tool-layout { grid-template-columns: 1fr; height: auto; overflow: auto; }
+      .config-panel { min-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg bg-dark navbar-dark">
+    <div class="container-fluid px-3">
+      <a class="navbar-brand fw-semibold" href="/">Dayan Raj</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <span class="navbar-text text-white-50 small">/ Tools / Kubernetes Manifest Generator</span>
+          </li>
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="/about.html">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="https://github.com/koavan" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="tool-layout">
+    <div class="palette" id="palette"><div class="palette-heading">Components</div></div>
+
+    <div class="canvas-area">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div>
+          <span class="fw-semibold" style="font-size:0.88rem;">Manifest Canvas</span>
+          <span class="text-muted ms-2" style="font-size:0.75rem;">drag components from the left</span>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="clearAll()">Clear all</button>
+      </div>
+      <div class="drop-zone" id="rootZone">
+        <div class="canvas-empty" id="canvasEmpty">
+          <div style="font-size:2.2rem;">☸</div>
+          <div class="mt-2 fw-semibold">Drag a component here to start</div>
+          <div class="small mt-1">Or pick a quick template from the left panel</div>
+        </div>
+        <div id="blockList"></div>
+      </div>
+    </div>
+
+    <div class="config-panel">
+      <div class="config-panel-head">
+        <span class="config-panel-title">manifest.yaml</span>
+        <span class="badge bg-secondary" id="blockCount" style="font-size:0.68rem;">0 resources</span>
+      </div>
+      <pre class="config-output" id="configOutput"># Your Kubernetes manifest will appear here.
+# Drag a component onto the canvas to begin.</pre>
+      <div class="config-footer">
+        <button class="btn btn-sm btn-outline-light" onclick="copyConfig()">Copy</button>
+        <button class="btn btn-sm btn-outline-light" onclick="downloadConfig()">Download .yaml</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  // ─── WORKLOAD_TYPES: parent types that carry a pod template ───────────────
+  const WORKLOAD_TYPES = ['pod','deployment','statefulset','daemonset','job','cronjob'];
+
+  // ─── Component definitions ────────────────────────────────────────────────
+  const DEFS = {
+    // ── Core Workloads ──────────────────────────────────────────────────────
+    pod: {
+      label:'Pod', icon:'🫛', badge:'tb-pod', badgeText:'pod',
+      parentTypes:[null], childTypes:['container','initcontainer','volume'],
+      docUrl:'https://kubernetes.io/docs/concepts/workloads/pods/',
+      tip:'The smallest deployable unit. Runs one or more containers that share network and storage. Standalone Pods are not rescheduled on node failure — use Deployment for production.',
+      fields:[
+        {k:'name',      label:'Name',      t:'text', d:'my-pod'},
+        {k:'namespace', label:'Namespace', t:'text', d:'default'},
+      ],
+    },
+    deployment: {
+      label:'Deployment', icon:'🚀', badge:'tb-deployment', badgeText:'deployment',
+      parentTypes:[null], childTypes:['container','initcontainer','volume'],
+      docUrl:'https://kubernetes.io/docs/concepts/workloads/controllers/deployment/',
+      tip:'Manages a set of identical Pods. Provides declarative rollouts, rollback, and self-healing. Drop Container, Init Container, and Volume inside.',
+      fields:[
+        {k:'name',               label:'Name',            t:'text', d:'my-app'},
+        {k:'namespace',          label:'Namespace',       t:'text', d:'default'},
+        {k:'replicas',           label:'Replicas',        t:'text', d:'1'},
+        {k:'serviceAccountName', label:'Service Account', t:'text', d:''},
+      ],
+    },
+    statefulset: {
+      label:'StatefulSet', icon:'🗄', badge:'tb-statefulset', badgeText:'statefulset',
+      parentTypes:[null], childTypes:['container','initcontainer','volume','volumeclaimtemplate'],
+      docUrl:'https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/',
+      tip:'Manages stateful applications. Each Pod gets a stable network identity and persistent storage. Ideal for databases and queues. Drop Container, Volume, and VolumeClaimTemplate inside.',
+      fields:[
+        {k:'name',               label:'Name',             t:'text', d:'my-statefulset'},
+        {k:'namespace',          label:'Namespace',        t:'text', d:'default'},
+        {k:'replicas',           label:'Replicas',         t:'text', d:'3'},
+        {k:'serviceName',        label:'Headless Service', t:'text', d:'my-headless-svc'},
+        {k:'serviceAccountName', label:'Service Account',  t:'text', d:''},
+      ],
+    },
+    daemonset: {
+      label:'DaemonSet', icon:'🌀', badge:'tb-daemonset', badgeText:'daemonset',
+      parentTypes:[null], childTypes:['container','initcontainer','volume'],
+      docUrl:'https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/',
+      tip:'Ensures a Pod copy runs on every (or selected) node. Used for cluster-wide agents like log collectors, monitoring, or network plugins.',
+      fields:[
+        {k:'name',               label:'Name',            t:'text', d:'my-daemonset'},
+        {k:'namespace',          label:'Namespace',       t:'text', d:'default'},
+        {k:'serviceAccountName', label:'Service Account', t:'text', d:''},
+      ],
+    },
+    job: {
+      label:'Job', icon:'⚡', badge:'tb-job', badgeText:'job',
+      parentTypes:[null], childTypes:['container','initcontainer','volume'],
+      docUrl:'https://kubernetes.io/docs/concepts/workloads/controllers/job/',
+      tip:'Runs Pods to completion. Tracks successful completions and retries on failure. Use for batch processing, migrations, or one-off tasks.',
+      fields:[
+        {k:'name',          label:'Name',           t:'text',   d:'my-job'},
+        {k:'namespace',     label:'Namespace',      t:'text',   d:'default'},
+        {k:'completions',   label:'Completions',    t:'text',   d:'1'},
+        {k:'parallelism',   label:'Parallelism',    t:'text',   d:'1'},
+        {k:'backoffLimit',  label:'Backoff Limit',  t:'text',   d:'4'},
+        {k:'restartPolicy', label:'Restart Policy', t:'select', d:'Never', opts:['Never','OnFailure']},
+      ],
+    },
+    cronjob: {
+      label:'CronJob', icon:'🕐', badge:'tb-cronjob', badgeText:'cronjob',
+      parentTypes:[null], childTypes:['container','initcontainer','volume'],
+      docUrl:'https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/',
+      tip:'Runs Jobs on a repeating schedule using cron syntax. Use for backups, report generation, or periodic cleanup. Drop Container inside.',
+      fields:[
+        {k:'name',               label:'Name',                   t:'text',   d:'my-cronjob'},
+        {k:'namespace',          label:'Namespace',              t:'text',   d:'default'},
+        {k:'schedule',           label:'Schedule (cron)',        t:'text',   d:'0 * * * *'},
+        {k:'concurrencyPolicy',  label:'Concurrency Policy',     t:'select', d:'Allow', opts:['Allow','Forbid','Replace']},
+        {k:'restartPolicy',      label:'Restart Policy',         t:'select', d:'OnFailure', opts:['OnFailure','Never']},
+        {k:'successJobsHistory', label:'Successful Jobs History', t:'text',   d:'3'},
+        {k:'failedJobsHistory',  label:'Failed Jobs History',    t:'text',   d:'1'},
+      ],
+    },
+    // ── Networking ──────────────────────────────────────────────────────────
+    service: {
+      label:'Service', icon:'🔗', badge:'tb-service', badgeText:'service',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/services-networking/service/',
+      tip:'Exposes a set of Pods as a stable network endpoint. Provides DNS, load balancing, and a fixed ClusterIP regardless of Pod restarts.',
+      fields:[
+        {k:'name',       label:'Name',                     t:'text',   d:'my-service'},
+        {k:'namespace',  label:'Namespace',                t:'text',   d:'default'},
+        {k:'type',       label:'Type',                     t:'select', d:'ClusterIP', opts:['ClusterIP','NodePort','LoadBalancer','ExternalName']},
+        {k:'selector',   label:'Selector (app label)',     t:'text',   d:'my-app'},
+        {k:'port',       label:'Port',                     t:'text',   d:'80'},
+        {k:'targetPort', label:'Target Port',              t:'text',   d:'8080'},
+        {k:'protocol',   label:'Protocol',                 t:'select', d:'TCP', opts:['TCP','UDP','SCTP']},
+        {k:'nodePort',   label:'Node Port (NodePort only)', t:'text',  d:''},
+      ],
+    },
+    ingress: {
+      label:'Ingress', icon:'🌐', badge:'tb-ingress', badgeText:'ingress',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/services-networking/ingress/',
+      tip:'Manages external HTTP/S access to services. Provides URL routing, SSL termination, and virtual hosting via an Ingress controller.',
+      fields:[
+        {k:'name',        label:'Name',             t:'text',     d:'my-ingress'},
+        {k:'namespace',   label:'Namespace',        t:'text',     d:'default'},
+        {k:'className',   label:'Ingress Class',    t:'text',     d:'nginx'},
+        {k:'host',        label:'Host',             t:'text',     d:'example.com'},
+        {k:'path',        label:'Path',             t:'text',     d:'/'},
+        {k:'pathType',    label:'Path Type',        t:'select',   d:'Prefix', opts:['Prefix','Exact','ImplementationSpecific']},
+        {k:'serviceName', label:'Backend Service',  t:'text',     d:'my-service'},
+        {k:'servicePort', label:'Backend Port',     t:'text',     d:'80'},
+        {k:'tlsEnabled',  label:'Enable TLS',       t:'checkbox', d:false},
+        {k:'tlsSecret',   label:'TLS Secret Name',  t:'text',     d:'my-tls-secret'},
+      ],
+    },
+    networkpolicy: {
+      label:'NetworkPolicy', icon:'🛡', badge:'tb-networkpolicy', badgeText:'netpol',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/services-networking/network-policies/',
+      tip:'Controls which Pods can communicate with each other and external endpoints. Requires a CNI that supports NetworkPolicy (Calico, Cilium, etc.).',
+      fields:[
+        {k:'name',        label:'Name',                 t:'text',     d:'my-network-policy'},
+        {k:'namespace',   label:'Namespace',            t:'text',     d:'default'},
+        {k:'podSelector', label:'Pod Selector (app=)',  t:'text',     d:'my-app'},
+        {k:'ingress',     label:'Allow Ingress',        t:'checkbox', d:true},
+        {k:'egress',      label:'Allow Egress',         t:'checkbox', d:false},
+        {k:'ingressFrom', label:'Ingress From (app=)',  t:'text',     d:'frontend'},
+        {k:'ingressPort', label:'Ingress Port',         t:'text',     d:'8080'},
+        {k:'egressTo',    label:'Egress To (app=)',     t:'text',     d:'backend'},
+        {k:'egressPort',  label:'Egress Port',          t:'text',     d:'5432'},
+      ],
+    },
+    // ── Config ──────────────────────────────────────────────────────────────
+    namespace: {
+      label:'Namespace', icon:'🏷', badge:'tb-namespace', badgeText:'namespace',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/',
+      tip:'Provides a mechanism for isolating groups of resources within a single cluster. Names must be unique within a namespace.',
+      fields:[
+        {k:'name', label:'Name', t:'text', d:'my-namespace'},
+      ],
+    },
+    configmap: {
+      label:'ConfigMap', icon:'⚙', badge:'tb-configmap', badgeText:'configmap',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/configuration/configmap/',
+      tip:'Stores non-confidential data as key-value pairs. Pods consume ConfigMaps as environment variables, command-line args, or config files.',
+      fields:[
+        {k:'name',      label:'Name',                             t:'text',     d:'my-config'},
+        {k:'namespace', label:'Namespace',                        t:'text',     d:'default'},
+        {k:'data',      label:'Data (key: value, one per line)',  t:'textarea', d:'APP_ENV: production\nAPP_PORT: "8080"'},
+      ],
+    },
+    secret: {
+      label:'Secret', icon:'🔐', badge:'tb-secret', badgeText:'secret',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/configuration/secret/',
+      tip:'Stores sensitive data such as passwords, OAuth tokens, or SSH keys. Values must be base64 encoded.',
+      fields:[
+        {k:'name',       label:'Name',                                  t:'text',     d:'my-secret'},
+        {k:'namespace',  label:'Namespace',                             t:'text',     d:'default'},
+        {k:'secretType', label:'Type',                                  t:'select',   d:'Opaque', opts:['Opaque','kubernetes.io/tls','kubernetes.io/dockerconfigjson','kubernetes.io/service-account-token']},
+        {k:'data',       label:'Data (key: base64value, one per line)', t:'textarea', d:'DB_PASSWORD: cGFzc3dvcmQ='},
+      ],
+    },
+    limitrange: {
+      label:'LimitRange', icon:'📏', badge:'tb-limitrange', badgeText:'limitrange',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/policy/limit-range/',
+      tip:'Sets default CPU/memory requests and limits for containers in a namespace, and enforces min/max boundaries when Pods do not specify resources.',
+      fields:[
+        {k:'name',          label:'Name',                 t:'text', d:'default-limits'},
+        {k:'namespace',     label:'Namespace',            t:'text', d:'default'},
+        {k:'defaultCpu',    label:'Default CPU Limit',    t:'text', d:'500m'},
+        {k:'defaultMem',    label:'Default Mem Limit',    t:'text', d:'512Mi'},
+        {k:'defaultReqCpu', label:'Default CPU Request',  t:'text', d:'100m'},
+        {k:'defaultReqMem', label:'Default Mem Request',  t:'text', d:'128Mi'},
+        {k:'maxCpu',        label:'Max CPU',              t:'text', d:'2'},
+        {k:'maxMem',        label:'Max Memory',           t:'text', d:'2Gi'},
+      ],
+    },
+    resourcequota: {
+      label:'ResourceQuota', icon:'⚖', badge:'tb-resourcequota', badgeText:'quota',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/policy/resource-quotas/',
+      tip:'Limits the total resources (CPU, memory, object count) a namespace can consume. Prevents any team from exhausting cluster capacity.',
+      fields:[
+        {k:'name',      label:'Name',            t:'text', d:'my-quota'},
+        {k:'namespace', label:'Namespace',       t:'text', d:'default'},
+        {k:'reqCpu',    label:'Requests CPU',    t:'text', d:'4'},
+        {k:'reqMem',    label:'Requests Memory', t:'text', d:'8Gi'},
+        {k:'limCpu',    label:'Limits CPU',      t:'text', d:'8'},
+        {k:'limMem',    label:'Limits Memory',   t:'text', d:'16Gi'},
+        {k:'pods',      label:'Max Pods',        t:'text', d:'20'},
+        {k:'services',  label:'Max Services',    t:'text', d:'10'},
+        {k:'pvcs',      label:'Max PVCs',        t:'text', d:'10'},
+      ],
+    },
+    // ── Storage ─────────────────────────────────────────────────────────────
+    pvc: {
+      label:'PersistentVolumeClaim', icon:'💾', badge:'tb-pvc', badgeText:'pvc',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/storage/persistent-volumes/',
+      tip:'A request for storage by a user. Kubernetes binds it to a PersistentVolume matching the requested capacity and access mode.',
+      fields:[
+        {k:'name',         label:'Name',          t:'text',   d:'my-pvc'},
+        {k:'namespace',    label:'Namespace',     t:'text',   d:'default'},
+        {k:'accessMode',   label:'Access Mode',   t:'select', d:'ReadWriteOnce', opts:['ReadWriteOnce','ReadOnlyMany','ReadWriteMany','ReadWriteOncePod']},
+        {k:'storage',      label:'Storage',       t:'text',   d:'1Gi'},
+        {k:'storageClass', label:'Storage Class', t:'text',   d:'standard'},
+      ],
+    },
+    pv: {
+      label:'PersistentVolume', icon:'🗃', badge:'tb-pv', badgeText:'pv',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistent-volumes',
+      tip:'A cluster-level storage resource provisioned by an admin or dynamically by a StorageClass. Pods claim it via PersistentVolumeClaims.',
+      fields:[
+        {k:'name',          label:'Name',                      t:'text',   d:'my-pv'},
+        {k:'storage',       label:'Capacity',                  t:'text',   d:'10Gi'},
+        {k:'accessMode',    label:'Access Mode',               t:'select', d:'ReadWriteOnce', opts:['ReadWriteOnce','ReadOnlyMany','ReadWriteMany','ReadWriteOncePod']},
+        {k:'reclaimPolicy', label:'Reclaim Policy',            t:'select', d:'Retain', opts:['Retain','Recycle','Delete']},
+        {k:'storageClass',  label:'Storage Class Name',        t:'text',   d:'manual'},
+        {k:'volumeType',    label:'Volume Type',               t:'select', d:'hostPath', opts:['hostPath','nfs','local']},
+        {k:'path',          label:'Path (hostPath / local)',   t:'text',   d:'/data/my-pv'},
+        {k:'server',        label:'NFS Server IP',             t:'text',   d:'192.168.1.100'},
+      ],
+    },
+    storageclass: {
+      label:'StorageClass', icon:'🏗', badge:'tb-storageclass', badgeText:'storageclass',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/storage/storage-classes/',
+      tip:'Defines a class of storage with a specific provisioner and parameters. PVCs can reference a class to trigger dynamic PV provisioning.',
+      fields:[
+        {k:'name',              label:'Name',                     t:'text',     d:'fast'},
+        {k:'provisioner',       label:'Provisioner',              t:'text',     d:'kubernetes.io/no-provisioner'},
+        {k:'reclaimPolicy',     label:'Reclaim Policy',           t:'select',   d:'Delete', opts:['Delete','Retain']},
+        {k:'volumeBindingMode', label:'Volume Binding Mode',      t:'select',   d:'WaitForFirstConsumer', opts:['WaitForFirstConsumer','Immediate']},
+        {k:'allowExpansion',    label:'Allow Volume Expansion',   t:'checkbox', d:true},
+        {k:'parameters',        label:'Parameters (key: value, one per line)', t:'textarea', d:'type: gp3'},
+      ],
+    },
+    // ── Identity & Scaling ──────────────────────────────────────────────────
+    serviceaccount: {
+      label:'ServiceAccount', icon:'👤', badge:'tb-serviceaccount', badgeText:'serviceaccount',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/security/service-accounts/',
+      tip:'Provides an identity for processes running in a Pod. Used to control API access permissions through RBAC.',
+      fields:[
+        {k:'name',      label:'Name',      t:'text', d:'my-service-account'},
+        {k:'namespace', label:'Namespace', t:'text', d:'default'},
+      ],
+    },
+    hpa: {
+      label:'HorizontalPodAutoscaler', icon:'📈', badge:'tb-hpa', badgeText:'hpa',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/',
+      tip:'Automatically scales the number of Pod replicas in a Deployment based on observed CPU utilization or custom metrics.',
+      fields:[
+        {k:'name',             label:'Name',               t:'text', d:'my-hpa'},
+        {k:'namespace',        label:'Namespace',          t:'text', d:'default'},
+        {k:'targetDeployment', label:'Target Deployment',  t:'text', d:'my-app'},
+        {k:'minReplicas',      label:'Min Replicas',       t:'text', d:'1'},
+        {k:'maxReplicas',      label:'Max Replicas',       t:'text', d:'10'},
+        {k:'cpuUtilization',   label:'CPU Target (%)',     t:'text', d:'80'},
+      ],
+    },
+    pdb: {
+      label:'PodDisruptionBudget', icon:'🛟', badge:'tb-pdb', badgeText:'pdb',
+      parentTypes:[null], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/tasks/run-application/configure-pdb/',
+      tip:'Ensures a minimum number of Pods remain available during voluntary disruptions like node drains or rolling updates.',
+      fields:[
+        {k:'name',      label:'Name',                    t:'text',   d:'my-pdb'},
+        {k:'namespace', label:'Namespace',               t:'text',   d:'default'},
+        {k:'selector',  label:'Pod Selector (app=)',     t:'text',   d:'my-app'},
+        {k:'type',      label:'Budget Type',             t:'select', d:'minAvailable', opts:['minAvailable','maxUnavailable']},
+        {k:'value',     label:'Value (number or %)',     t:'text',   d:'1'},
+      ],
+    },
+    // ── RBAC ────────────────────────────────────────────────────────────────
+    role: {
+      label:'Role', icon:'🔑', badge:'tb-role', badgeText:'role',
+      parentTypes:[null], childTypes:['policyrule'],
+      docUrl:'https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole',
+      tip:'Namespace-scoped set of permissions. Rules define which API groups, resources, and verbs are allowed. Drop Policy Rule inside.',
+      fields:[
+        {k:'name',      label:'Name',      t:'text', d:'my-role'},
+        {k:'namespace', label:'Namespace', t:'text', d:'default'},
+      ],
+    },
+    clusterrole: {
+      label:'ClusterRole', icon:'🗝', badge:'tb-clusterrole', badgeText:'clusterrole',
+      parentTypes:[null], childTypes:['policyrule'],
+      docUrl:'https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole',
+      tip:'Cluster-scoped set of permissions. Like Role but applies across all namespaces and can grant access to non-namespaced resources.',
+      fields:[
+        {k:'name', label:'Name', t:'text', d:'my-cluster-role'},
+      ],
+    },
+    rolebinding: {
+      label:'RoleBinding', icon:'⛓', badge:'tb-rolebinding', badgeText:'rolebinding',
+      parentTypes:[null], childTypes:['subject'],
+      docUrl:'https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding',
+      tip:'Grants a Role or ClusterRole to subjects (users, groups, ServiceAccounts) within a namespace. Drop Subject inside.',
+      fields:[
+        {k:'name',        label:'Name',           t:'text',   d:'my-role-binding'},
+        {k:'namespace',   label:'Namespace',      t:'text',   d:'default'},
+        {k:'roleRefKind', label:'Role Ref Kind',  t:'select', d:'Role', opts:['Role','ClusterRole']},
+        {k:'roleRefName', label:'Role Ref Name',  t:'text',   d:'my-role'},
+      ],
+    },
+    clusterrolebinding: {
+      label:'ClusterRoleBinding', icon:'🔗', badge:'tb-clusterrolebinding', badgeText:'clusterrolebinding',
+      parentTypes:[null], childTypes:['subject'],
+      docUrl:'https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding',
+      tip:'Grants a ClusterRole to subjects cluster-wide across all namespaces. Drop Subject inside.',
+      fields:[
+        {k:'name',        label:'Name',             t:'text', d:'my-cluster-role-binding'},
+        {k:'roleRefName', label:'ClusterRole Name', t:'text', d:'my-cluster-role'},
+      ],
+    },
+    // ── Pod template sub-components ─────────────────────────────────────────
+    container: {
+      label:'Container', icon:'📦', badge:'tb-container', badgeText:'container',
+      parentTypes:WORKLOAD_TYPES, childTypes:['containerport','envvar','volumemount','startupprobe','livenessprobe','readinessprobe','resources'],
+      docUrl:'https://kubernetes.io/docs/concepts/containers/',
+      tip:'A runnable image within a Pod. Drop Port, Env Var, Volume Mount, Probes, and Resource Limits inside.',
+      fields:[
+        {k:'name',            label:'Name',              t:'text',   d:'app'},
+        {k:'image',           label:'Image',             t:'text',   d:'nginx:latest'},
+        {k:'imagePullPolicy', label:'Image Pull Policy', t:'select', d:'IfNotPresent', opts:['IfNotPresent','Always','Never']},
+      ],
+    },
+    initcontainer: {
+      label:'Init Container', icon:'🔧', badge:'tb-initcontainer', badgeText:'init container',
+      parentTypes:WORKLOAD_TYPES, childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/workloads/pods/init-containers/',
+      tip:'Runs to completion before app containers start. Used for setup tasks such as waiting for dependencies or pre-populating data.',
+      fields:[
+        {k:'name',    label:'Name',                       t:'text', d:'init'},
+        {k:'image',   label:'Image',                      t:'text', d:'busybox:latest'},
+        {k:'command', label:'Command (comma-separated)',  t:'text', d:'sh, -c, echo init done'},
+      ],
+    },
+    volume: {
+      label:'Volume', icon:'📂', badge:'tb-volume', badgeText:'volume',
+      parentTypes:WORKLOAD_TYPES, childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/storage/volumes/',
+      tip:'Declares a storage volume at the Pod level. Containers reference it by name in a Volume Mount. Supports emptyDir, ConfigMap, Secret, PVC, and hostPath.',
+      fields:[
+        {k:'name',    label:'Name',                                          t:'text',   d:'data'},
+        {k:'type',    label:'Volume Type',                                   t:'select', d:'emptyDir', opts:['emptyDir','configMap','secret','pvc','hostPath']},
+        {k:'refName', label:'Ref Name (ConfigMap / Secret / PVC / HostPath)', t:'text',  d:''},
+      ],
+    },
+    volumeclaimtemplate: {
+      label:'VolumeClaimTemplate', icon:'📀', badge:'tb-vct', badgeText:'claim tpl',
+      parentTypes:['statefulset'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#stable-storage',
+      tip:'Automatically provisions a PVC for each StatefulSet Pod replica. Each Pod gets its own dedicated storage that persists across restarts.',
+      fields:[
+        {k:'name',         label:'Name',          t:'text',   d:'data'},
+        {k:'accessMode',   label:'Access Mode',   t:'select', d:'ReadWriteOnce', opts:['ReadWriteOnce','ReadOnlyMany','ReadWriteMany','ReadWriteOncePod']},
+        {k:'storage',      label:'Storage',       t:'text',   d:'1Gi'},
+        {k:'storageClass', label:'Storage Class', t:'text',   d:'standard'},
+      ],
+    },
+    // ── Container sub-components ────────────────────────────────────────────
+    containerport: {
+      label:'Container Port', icon:'🔌', badge:'tb-containerport', badgeText:'port',
+      parentTypes:['container'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#ports',
+      tip:'Declares a port the container listens on. Informational only — does not control network access. Required when used with a Service.',
+      fields:[
+        {k:'port',     label:'Container Port', t:'text',   d:'80'},
+        {k:'name',     label:'Port Name',      t:'text',   d:'http'},
+        {k:'protocol', label:'Protocol',       t:'select', d:'TCP', opts:['TCP','UDP','SCTP']},
+      ],
+    },
+    envvar: {
+      label:'Env Var', icon:'$', badge:'tb-envvar', badgeText:'env',
+      parentTypes:['container'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/',
+      tip:'Sets an environment variable. Source can be a static value, a ConfigMap key, or a Secret key.',
+      fields:[
+        {k:'name',    label:'Variable Name',             t:'text',   d:'MY_VAR'},
+        {k:'source',  label:'Source',                    t:'select', d:'value', opts:['value','configmap','secret']},
+        {k:'value',   label:'Value (source = value)',    t:'text',   d:'my-value'},
+        {k:'refName', label:'ConfigMap / Secret name',  t:'text',   d:''},
+        {k:'refKey',  label:'Key',                       t:'text',   d:''},
+      ],
+    },
+    volumemount: {
+      label:'Volume Mount', icon:'📎', badge:'tb-volumemount', badgeText:'mount',
+      parentTypes:['container'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/storage/volumes/#using-volumes',
+      tip:'Mounts a Pod-level Volume into the container at a specified path. The volume name must match a Volume declared in the parent workload.',
+      fields:[
+        {k:'name',      label:'Volume Name', t:'text',     d:'data'},
+        {k:'mountPath', label:'Mount Path',  t:'text',     d:'/data'},
+        {k:'readOnly',  label:'Read Only',   t:'checkbox', d:false},
+      ],
+    },
+    startupprobe: {
+      label:'Startup Probe', icon:'🚦', badge:'tb-probe', badgeText:'startup',
+      parentTypes:['container'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-startup-probes',
+      tip:'Checks whether the application has finished starting. Disables liveness and readiness probes until it succeeds, giving slow containers more time.',
+      fields:[
+        {k:'type',             label:'Probe Type',                      t:'select', d:'httpGet', opts:['httpGet','exec','tcpSocket']},
+        {k:'path',             label:'HTTP Path (httpGet)',             t:'text',   d:'/health'},
+        {k:'port',             label:'Port (httpGet / tcpSocket)',      t:'text',   d:'8080'},
+        {k:'command',          label:'Command (exec, comma-separated)', t:'text',   d:'cat, /tmp/started'},
+        {k:'initialDelay',     label:'Initial Delay (s)',              t:'text',   d:'0'},
+        {k:'period',           label:'Period (s)',                     t:'text',   d:'10'},
+        {k:'failureThreshold', label:'Failure Threshold',             t:'text',   d:'30'},
+      ],
+    },
+    livenessprobe: {
+      label:'Liveness Probe', icon:'❤', badge:'tb-probe', badgeText:'liveness',
+      parentTypes:['container'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/',
+      tip:'Checks whether the container is alive. If it fails, Kubernetes kills and restarts the container. Use to detect deadlocks.',
+      fields:[
+        {k:'type',             label:'Probe Type',                      t:'select', d:'httpGet', opts:['httpGet','exec','tcpSocket']},
+        {k:'path',             label:'HTTP Path (httpGet)',             t:'text',   d:'/health'},
+        {k:'port',             label:'Port (httpGet / tcpSocket)',      t:'text',   d:'8080'},
+        {k:'command',          label:'Command (exec, comma-separated)', t:'text',   d:'cat, /tmp/healthy'},
+        {k:'initialDelay',     label:'Initial Delay (s)',              t:'text',   d:'15'},
+        {k:'period',           label:'Period (s)',                     t:'text',   d:'10'},
+        {k:'failureThreshold', label:'Failure Threshold',             t:'text',   d:'3'},
+      ],
+    },
+    readinessprobe: {
+      label:'Readiness Probe', icon:'🔍', badge:'tb-probe', badgeText:'readiness',
+      parentTypes:['container'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/',
+      tip:'Checks whether the container is ready to serve traffic. If it fails, the Pod is removed from Service endpoints until it recovers.',
+      fields:[
+        {k:'type',             label:'Probe Type',                      t:'select', d:'httpGet', opts:['httpGet','exec','tcpSocket']},
+        {k:'path',             label:'HTTP Path (httpGet)',             t:'text',   d:'/ready'},
+        {k:'port',             label:'Port (httpGet / tcpSocket)',      t:'text',   d:'8080'},
+        {k:'command',          label:'Command (exec, comma-separated)', t:'text',   d:'cat, /tmp/ready'},
+        {k:'initialDelay',     label:'Initial Delay (s)',              t:'text',   d:'5'},
+        {k:'period',           label:'Period (s)',                     t:'text',   d:'5'},
+        {k:'failureThreshold', label:'Failure Threshold',             t:'text',   d:'3'},
+      ],
+    },
+    resources: {
+      label:'Resource Limits', icon:'⚖', badge:'tb-resources', badgeText:'resources',
+      parentTypes:['container'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/',
+      tip:'Sets CPU and memory requests (scheduler hint) and limits (hard cap) for the container.',
+      fields:[
+        {k:'cpuRequest', label:'CPU Request',    t:'text', d:'100m'},
+        {k:'memRequest', label:'Memory Request', t:'text', d:'128Mi'},
+        {k:'cpuLimit',   label:'CPU Limit',      t:'text', d:'500m'},
+        {k:'memLimit',   label:'Memory Limit',   t:'text', d:'512Mi'},
+      ],
+    },
+    // ── RBAC sub-components ─────────────────────────────────────────────────
+    policyrule: {
+      label:'Policy Rule', icon:'📋', badge:'tb-policyrule', badgeText:'rule',
+      parentTypes:['role','clusterrole'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole',
+      tip:'A single permission rule: which API groups + resources this role can access, and which verbs (get, list, watch, create, update, patch, delete) are allowed.',
+      fields:[
+        {k:'apiGroups', label:'API Groups (comma-sep, "" = core)', t:'text', d:'""'},
+        {k:'resources', label:'Resources (comma-separated)',       t:'text', d:'pods'},
+        {k:'verbs',     label:'Verbs (comma-separated)',          t:'text', d:'get,list,watch'},
+      ],
+    },
+    subject: {
+      label:'Subject', icon:'👥', badge:'tb-subject', badgeText:'subject',
+      parentTypes:['rolebinding','clusterrolebinding'], childTypes:[],
+      docUrl:'https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-subjects',
+      tip:'A user, group, or ServiceAccount the binding grants permissions to. For ServiceAccounts, set the namespace where the account lives.',
+      fields:[
+        {k:'kind',      label:'Kind',                            t:'select', d:'ServiceAccount', opts:['ServiceAccount','User','Group']},
+        {k:'name',      label:'Name',                           t:'text',   d:'my-service-account'},
+        {k:'namespace', label:'Namespace (ServiceAccount only)', t:'text',  d:'default'},
+      ],
+    },
+  };
+
+  // ─── Palette sections ────────────────────────────────────────────────────
+  const PALETTE_SECTIONS = [
+    {title:'Core Workloads',    types:['pod','deployment','statefulset','daemonset']},
+    {title:'Batch',             types:['job','cronjob']},
+    {title:'Networking',        types:['service','ingress','networkpolicy']},
+    {title:'Config',            types:['namespace','configmap','secret','limitrange','resourcequota']},
+    {title:'Storage',           types:['pvc','pv','storageclass']},
+    {title:'Identity & Scaling',types:['serviceaccount','hpa','pdb']},
+    {title:'RBAC',              types:['role','clusterrole','rolebinding','clusterrolebinding']},
+    {title:'Inside Pod / Workload', types:['container','initcontainer','volume','volumeclaimtemplate']},
+    {title:'Inside Container',  types:['containerport','envvar','volumemount','startupprobe','livenessprobe','readinessprobe','resources']},
+    {title:'Inside Role',       types:['policyrule']},
+    {title:'Inside RoleBinding',types:['subject']},
+  ];
+
+  // ─── State ───────────────────────────────────────────────────────────────
+  let blocks = [];
+  let selectedId = null;
+  let idSeq = 0;
+  let dragType = null;
+
+  function uid() { return 'b' + (++idSeq); }
+
+  function mkBlock(type, parentId) {
+    const def = DEFS[type];
+    const fields = {};
+    def.fields.forEach(f => { fields[f.k] = f.d; });
+    return { id: uid(), type, parentId: parentId || null, fields, collapsed: false };
+  }
+
+  function addBlock(type, parentId) {
+    const b = mkBlock(type, parentId || null);
+    blocks.push(b);
+    render();
+    selectedId = b.id;
+    render();
+    return b;
+  }
+
+  function deleteBlock(id) {
+    const desc = allDescendants(id);
+    desc.push(id);
+    blocks = blocks.filter(b => !desc.includes(b.id));
+    if (desc.includes(selectedId)) selectedId = null;
+    render();
+  }
+
+  function allDescendants(id) {
+    const direct = blocks.filter(b => b.parentId === id).map(b => b.id);
+    return direct.flatMap(cid => [cid, ...allDescendants(cid)]);
+  }
+
+  function childrenOf(pid) { return blocks.filter(b => b.parentId === pid); }
+  function topLevel()      { return blocks.filter(b => b.parentId === null); }
+
+  function clearAll() {
+    if (!blocks.length) return;
+    if (!confirm('Remove all blocks?')) return;
+    blocks = []; selectedId = null; render();
+  }
+
+  function updateField(id, k, v) {
+    const b = blocks.find(b => b.id === id);
+    if (b) { b.fields[k] = v; refreshOutput(); }
+  }
+
+  function toggleCollapse(id) {
+    const b = blocks.find(b => b.id === id);
+    if (b) { b.collapsed = !b.collapsed; render(); }
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────
+  function render() {
+    const list  = document.getElementById('blockList');
+    const empty = document.getElementById('canvasEmpty');
+    const top   = topLevel();
+    empty.style.display = top.length ? 'none' : 'block';
+    list.innerHTML = '';
+    top.forEach(b => list.appendChild(mkCardEl(b)));
+    document.getElementById('blockCount').textContent = top.length + ' resource' + (top.length !== 1 ? 's' : '');
+    refreshOutput();
+  }
+
+  function mkCardEl(block) {
+    const def = DEFS[block.type];
+    const card = document.createElement('div');
+    card.className = 'block-card' + (block.id === selectedId ? ' selected' : '');
+    card.dataset.id = block.id;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'block-card-header';
+    hdr.innerHTML =
+      `<span>${def.icon}</span>` +
+      `<span class="block-card-title">${def.label}</span>` +
+      `<span class="tbadge ${def.badge}">${def.badgeText}</span>` +
+      `<div class="block-actions ms-1">` +
+        `<button class="blk-btn" onclick="toggleCollapse('${block.id}')">${block.collapsed ? '▶' : '▼'}</button>` +
+        `<button class="blk-btn del" onclick="event.stopPropagation();deleteBlock('${block.id}')">✕</button>` +
+      `</div>`;
+    hdr.addEventListener('click', e => {
+      if (e.target.closest('.block-actions')) return;
+      selectedId = block.id; render();
+    });
+    card.appendChild(hdr);
+
+    if (!block.collapsed) {
+      const body = document.createElement('div');
+      body.className = 'block-body';
+
+      def.fields.forEach(f => {
+        const fd  = document.createElement('div');
+        fd.className = 'blk-field';
+        const eid = `${block.id}_${f.k}`;
+        const val = block.fields[f.k];
+        if (f.t === 'checkbox') {
+          fd.innerHTML =
+            `<div class="form-check">` +
+            `<input class="form-check-input" type="checkbox" id="${eid}"${val ? ' checked' : ''} ` +
+            `onchange="updateField('${block.id}','${f.k}',this.checked)">` +
+            `<label class="form-check-label" for="${eid}" style="font-size:.72rem">${f.label}</label>` +
+            `</div>`;
+        } else if (f.t === 'select') {
+          const opts = f.opts.map(o => `<option${val === o ? ' selected' : ''}>${o}</option>`).join('');
+          fd.innerHTML = `<label>${f.label}</label><select class="form-select form-select-sm" onchange="updateField('${block.id}','${f.k}',this.value)">${opts}</select>`;
+        } else if (f.t === 'textarea') {
+          fd.innerHTML = `<label>${f.label}</label><textarea class="form-control form-control-sm" rows="3" oninput="updateField('${block.id}','${f.k}',this.value)">${ea(val)}</textarea>`;
+        } else {
+          fd.innerHTML = `<label>${f.label}</label><input type="text" class="form-control form-control-sm" value="${ea(val)}" oninput="updateField('${block.id}','${f.k}',this.value)">`;
+        }
+        body.appendChild(fd);
+      });
+
+      if (def.childTypes.length > 0) {
+        const ch   = childrenOf(block.id);
+        const zone = document.createElement('div');
+        zone.className = 'children-zone';
+        zone.dataset.pid = block.id;
+        if (!ch.length) {
+          zone.innerHTML = `<div class="children-zone-hint">Drop here: ${def.childTypes.join(', ')}</div>`;
+        } else {
+          ch.forEach(c => zone.appendChild(mkCardEl(c)));
+        }
+        wireDropZone(zone, block.id);
+        body.appendChild(zone);
+      }
+      card.appendChild(body);
+    }
+    return card;
+  }
+
+  function ea(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ─── YAML generation ─────────────────────────────────────────────────────
+  function refreshOutput() {
+    document.getElementById('configOutput').textContent = buildManifest();
+  }
+
+  function buildManifest() {
+    if (!blocks.length) return '# Your Kubernetes manifest will appear here.\n# Drag a component onto the canvas to begin.';
+    const top = topLevel();
+    const ORDER = ['namespace','serviceaccount','configmap','secret','limitrange','resourcequota',
+                   'storageclass','pv','pvc','role','clusterrole','rolebinding','clusterrolebinding',
+                   'pod','deployment','statefulset','daemonset','job','cronjob',
+                   'service','ingress','networkpolicy','hpa','pdb'];
+    const ordered = [];
+    ORDER.forEach(t => ordered.push(...top.filter(b => b.type === t)));
+    top.forEach(b => { if (!ORDER.includes(b.type)) ordered.push(b); });
+    return ordered.map(b => genTopLevel(b).join('\n')).join('\n---\n');
+  }
+
+  function genTopLevel(b) {
+    switch (b.type) {
+      case 'namespace':          return genNamespace(b);
+      case 'pod':                return genPod(b);
+      case 'deployment':         return genDeployment(b);
+      case 'statefulset':        return genStatefulSet(b);
+      case 'daemonset':          return genDaemonSet(b);
+      case 'job':                return genJob(b);
+      case 'cronjob':            return genCronJob(b);
+      case 'service':            return genService(b);
+      case 'ingress':            return genIngress(b);
+      case 'networkpolicy':      return genNetworkPolicy(b);
+      case 'configmap':          return genConfigMap(b);
+      case 'secret':             return genSecret(b);
+      case 'limitrange':         return genLimitRange(b);
+      case 'resourcequota':      return genResourceQuota(b);
+      case 'pvc':                return genPVC(b);
+      case 'pv':                 return genPV(b);
+      case 'storageclass':       return genStorageClass(b);
+      case 'serviceaccount':     return genServiceAccount(b);
+      case 'hpa':                return genHPA(b);
+      case 'pdb':                return genPDB(b);
+      case 'role':               return genRole(b);
+      case 'clusterrole':        return genClusterRole(b);
+      case 'rolebinding':        return genRoleBinding(b);
+      case 'clusterrolebinding': return genClusterRoleBinding(b);
+      default: return [`# unknown block type: ${b.type}`];
+    }
+  }
+
+  // ── Pod spec helper (shared by all workloads) ─────────────────────────────
+  // indent = spaces before "containers:", "initContainers:", "volumes:"
+  function podSpecLines(bid, indent) {
+    const containers     = childrenOf(bid).filter(c => c.type === 'container');
+    const initContainers = childrenOf(bid).filter(c => c.type === 'initcontainer');
+    const volumes        = childrenOf(bid).filter(c => c.type === 'volume');
+    const L = [];
+    if (containers.length > 0) {
+      L.push(`${indent}containers:`);
+      containers.forEach(c => L.push(...genContainer(c, indent + '  ')));
+    } else {
+      L.push(`${indent}containers: []  # Drop a Container component inside`);
+    }
+    if (initContainers.length > 0) {
+      L.push(`${indent}initContainers:`);
+      initContainers.forEach(c => L.push(...genInitContainer(c, indent + '  ')));
+    }
+    if (volumes.length > 0) {
+      L.push(`${indent}volumes:`);
+      volumes.forEach(v => L.push(...genVolume(v, indent + '  ')));
+    }
+    return L;
+  }
+
+  // base = indent before the list-item dash (e.g. '  ' → '  - name: app')
+  function genContainer(b, base) {
+    if (!base) base = '      ';
+    const i2 = base + '  ';   // field indent
+    const i3 = base + '    '; // nested list item
+    const i4 = base + '      '; // field inside nested item
+    const f      = b.fields;
+    const ports  = childrenOf(b.id).filter(c => c.type === 'containerport');
+    const envs   = childrenOf(b.id).filter(c => c.type === 'envvar');
+    const mounts = childrenOf(b.id).filter(c => c.type === 'volumemount');
+    const startup = childrenOf(b.id).find(c => c.type === 'startupprobe');
+    const live   = childrenOf(b.id).find(c => c.type === 'livenessprobe');
+    const ready  = childrenOf(b.id).find(c => c.type === 'readinessprobe');
+    const res    = childrenOf(b.id).find(c => c.type === 'resources');
+
+    const L = [
+      `${base}- name: ${f.name || 'app'}`,
+      `${i2}image: ${f.image || 'nginx:latest'}`,
+      `${i2}imagePullPolicy: ${f.imagePullPolicy || 'IfNotPresent'}`,
+    ];
+
+    if (ports.length > 0) {
+      L.push(`${i2}ports:`);
+      ports.forEach(p => {
+        L.push(`${i3}- containerPort: ${p.fields.port || 80}`);
+        if (p.fields.name) L.push(`${i4}name: ${p.fields.name}`);
+        if (p.fields.protocol && p.fields.protocol !== 'TCP') L.push(`${i4}protocol: ${p.fields.protocol}`);
+      });
+    }
+
+    if (envs.length > 0) {
+      L.push(`${i2}env:`);
+      envs.forEach(e => {
+        const ef = e.fields;
+        if (ef.source === 'configmap') {
+          L.push(`${i3}- name: ${ef.name}`);
+          L.push(`${i4}valueFrom:`);
+          L.push(`${i4}  configMapKeyRef:`);
+          L.push(`${i4}    name: ${ef.refName || 'my-config'}`);
+          L.push(`${i4}    key: ${ef.refKey || 'KEY'}`);
+        } else if (ef.source === 'secret') {
+          L.push(`${i3}- name: ${ef.name}`);
+          L.push(`${i4}valueFrom:`);
+          L.push(`${i4}  secretKeyRef:`);
+          L.push(`${i4}    name: ${ef.refName || 'my-secret'}`);
+          L.push(`${i4}    key: ${ef.refKey || 'KEY'}`);
+        } else {
+          L.push(`${i3}- name: ${ef.name}`);
+          L.push(`${i4}value: "${ef.value}"`);
+        }
+      });
+    }
+
+    if (mounts.length > 0) {
+      L.push(`${i2}volumeMounts:`);
+      mounts.forEach(m => {
+        L.push(`${i3}- name: ${m.fields.name || 'data'}`);
+        L.push(`${i4}mountPath: ${m.fields.mountPath || '/data'}`);
+        if (m.fields.readOnly) L.push(`${i4}readOnly: true`);
+      });
+    }
+
+    if (res) {
+      const r = res.fields;
+      L.push(`${i2}resources:`);
+      if (r.cpuRequest || r.memRequest) {
+        L.push(`${i2}  requests:`);
+        if (r.cpuRequest) L.push(`${i2}    cpu: "${r.cpuRequest}"`);
+        if (r.memRequest) L.push(`${i2}    memory: "${r.memRequest}"`);
+      }
+      if (r.cpuLimit || r.memLimit) {
+        L.push(`${i2}  limits:`);
+        if (r.cpuLimit) L.push(`${i2}    cpu: "${r.cpuLimit}"`);
+        if (r.memLimit) L.push(`${i2}    memory: "${r.memLimit}"`);
+      }
+    }
+
+    if (startup) L.push(...genProbe(startup, 'startupProbe',   i2));
+    if (live)    L.push(...genProbe(live,    'livenessProbe',   i2));
+    if (ready)   L.push(...genProbe(ready,   'readinessProbe',  i2));
+
+    return L;
+  }
+
+  function genProbe(b, key, base) {
+    if (!base) base = '        ';
+    const i1 = base + '  ';
+    const i2 = base + '    ';
+    const f = b.fields;
+    const L = [`${base}${key}:`];
+    if (f.type === 'exec') {
+      const cmds = String(f.command || 'sh,-c,echo ok').split(',').map(c => `"${c.trim()}"`).join(', ');
+      L.push(`${i1}exec:`);
+      L.push(`${i2}command: [${cmds}]`);
+    } else if (f.type === 'tcpSocket') {
+      L.push(`${i1}tcpSocket:`);
+      L.push(`${i2}port: ${f.port || 8080}`);
+    } else {
+      L.push(`${i1}httpGet:`);
+      L.push(`${i2}path: ${f.path || '/health'}`);
+      L.push(`${i2}port: ${f.port || 8080}`);
+    }
+    L.push(`${i1}initialDelaySeconds: ${f.initialDelay || 15}`);
+    L.push(`${i1}periodSeconds: ${f.period || 10}`);
+    if (f.failureThreshold) L.push(`${i1}failureThreshold: ${f.failureThreshold}`);
+    return L;
+  }
+
+  function genInitContainer(b, base) {
+    if (!base) base = '      ';
+    const i2 = base + '  ';
+    const f = b.fields;
+    const L = [
+      `${base}- name: ${f.name || 'init'}`,
+      `${i2}image: ${f.image || 'busybox:latest'}`,
+    ];
+    if (f.command) {
+      const cmds = String(f.command).split(',').map(c => `"${c.trim()}"`).join(', ');
+      L.push(`${i2}command: [${cmds}]`);
+    }
+    return L;
+  }
+
+  function genVolume(b, base) {
+    if (!base) base = '      ';
+    const i2 = base + '  ';
+    const f = b.fields;
+    const L = [`${base}- name: ${f.name || 'data'}`];
+    switch (f.type) {
+      case 'configMap':
+        L.push(`${i2}configMap:`); L.push(`${i2}  name: ${f.refName || 'my-config'}`); break;
+      case 'secret':
+        L.push(`${i2}secret:`); L.push(`${i2}  secretName: ${f.refName || 'my-secret'}`); break;
+      case 'pvc':
+        L.push(`${i2}persistentVolumeClaim:`); L.push(`${i2}  claimName: ${f.refName || 'my-pvc'}`); break;
+      case 'hostPath':
+        L.push(`${i2}hostPath:`); L.push(`${i2}  path: ${f.refName || '/data'}`); L.push(`${i2}  type: Directory`); break;
+      default:
+        L.push(`${i2}emptyDir: {}`);
+    }
+    return L;
+  }
+
+  // ── Workload generators ───────────────────────────────────────────────────
+  function genPod(b) {
+    const f = b.fields;
+    const name = f.name || 'my-pod';
+    const L = [
+      'apiVersion: v1',
+      'kind: Pod',
+      'metadata:',
+      `  name: ${name}`,
+      `  namespace: ${f.namespace || 'default'}`,
+      '  labels:',
+      `    app: ${name}`,
+      'spec:',
+    ];
+    L.push(...podSpecLines(b.id, '  '));
+    return L;
+  }
+
+  function genDeployment(b) {
+    const f = b.fields;
+    const name = f.name || 'my-app';
+    const ns   = f.namespace || 'default';
+    const L = [
+      'apiVersion: apps/v1',
+      'kind: Deployment',
+      'metadata:',
+      `  name: ${name}`,
+      `  namespace: ${ns}`,
+      '  labels:',
+      `    app: ${name}`,
+      'spec:',
+      `  replicas: ${f.replicas || 1}`,
+      '  selector:',
+      '    matchLabels:',
+      `      app: ${name}`,
+      '  template:',
+      '    metadata:',
+      '      labels:',
+      `        app: ${name}`,
+      '    spec:',
+    ];
+    if (f.serviceAccountName) L.push(`      serviceAccountName: ${f.serviceAccountName}`);
+    L.push(...podSpecLines(b.id, '      '));
+    return L;
+  }
+
+  function genStatefulSet(b) {
+    const f    = b.fields;
+    const name = f.name || 'my-statefulset';
+    const ns   = f.namespace || 'default';
+    const vcts = childrenOf(b.id).filter(c => c.type === 'volumeclaimtemplate');
+    const L = [
+      'apiVersion: apps/v1',
+      'kind: StatefulSet',
+      'metadata:',
+      `  name: ${name}`,
+      `  namespace: ${ns}`,
+      '  labels:',
+      `    app: ${name}`,
+      'spec:',
+      `  serviceName: ${f.serviceName || 'my-headless-svc'}`,
+      `  replicas: ${f.replicas || 3}`,
+      '  selector:',
+      '    matchLabels:',
+      `      app: ${name}`,
+      '  template:',
+      '    metadata:',
+      '      labels:',
+      `        app: ${name}`,
+      '    spec:',
+    ];
+    if (f.serviceAccountName) L.push(`      serviceAccountName: ${f.serviceAccountName}`);
+    L.push(...podSpecLines(b.id, '      '));
+    if (vcts.length > 0) {
+      L.push('  volumeClaimTemplates:');
+      vcts.forEach(v => {
+        const vf = v.fields;
+        L.push(`  - metadata:`);
+        L.push(`      name: ${vf.name || 'data'}`);
+        L.push(`    spec:`);
+        L.push(`      accessModes: ["${vf.accessMode || 'ReadWriteOnce'}"]`);
+        L.push(`      resources:`);
+        L.push(`        requests:`);
+        L.push(`          storage: ${vf.storage || '1Gi'}`);
+        if (vf.storageClass) L.push(`      storageClassName: ${vf.storageClass}`);
+      });
+    }
+    return L;
+  }
+
+  function genDaemonSet(b) {
+    const f    = b.fields;
+    const name = f.name || 'my-daemonset';
+    const ns   = f.namespace || 'default';
+    const L = [
+      'apiVersion: apps/v1',
+      'kind: DaemonSet',
+      'metadata:',
+      `  name: ${name}`,
+      `  namespace: ${ns}`,
+      '  labels:',
+      `    app: ${name}`,
+      'spec:',
+      '  selector:',
+      '    matchLabels:',
+      `      app: ${name}`,
+      '  template:',
+      '    metadata:',
+      '      labels:',
+      `        app: ${name}`,
+      '    spec:',
+    ];
+    if (f.serviceAccountName) L.push(`      serviceAccountName: ${f.serviceAccountName}`);
+    L.push(...podSpecLines(b.id, '      '));
+    return L;
+  }
+
+  function genJob(b) {
+    const f    = b.fields;
+    const name = f.name || 'my-job';
+    const ns   = f.namespace || 'default';
+    const L = [
+      'apiVersion: batch/v1',
+      'kind: Job',
+      'metadata:',
+      `  name: ${name}`,
+      `  namespace: ${ns}`,
+      'spec:',
+      `  completions: ${f.completions || 1}`,
+      `  parallelism: ${f.parallelism || 1}`,
+      `  backoffLimit: ${f.backoffLimit || 4}`,
+      '  template:',
+      '    metadata:',
+      '      labels:',
+      `        app: ${name}`,
+      '    spec:',
+      `      restartPolicy: ${f.restartPolicy || 'Never'}`,
+    ];
+    L.push(...podSpecLines(b.id, '      '));
+    return L;
+  }
+
+  function genCronJob(b) {
+    const f    = b.fields;
+    const name = f.name || 'my-cronjob';
+    const ns   = f.namespace || 'default';
+    const L = [
+      'apiVersion: batch/v1',
+      'kind: CronJob',
+      'metadata:',
+      `  name: ${name}`,
+      `  namespace: ${ns}`,
+      'spec:',
+      `  schedule: "${f.schedule || '0 * * * *'}"`,
+      `  concurrencyPolicy: ${f.concurrencyPolicy || 'Allow'}`,
+      `  successfulJobsHistoryLimit: ${f.successJobsHistory || 3}`,
+      `  failedJobsHistoryLimit: ${f.failedJobsHistory || 1}`,
+      '  jobTemplate:',
+      '    spec:',
+      '      template:',
+      '        spec:',
+      `          restartPolicy: ${f.restartPolicy || 'OnFailure'}`,
+    ];
+    L.push(...podSpecLines(b.id, '          '));
+    return L;
+  }
+
+  // ── Networking ────────────────────────────────────────────────────────────
+  function genService(b) {
+    const f = b.fields;
+    const L = [
+      'apiVersion: v1',
+      'kind: Service',
+      'metadata:',
+      `  name: ${f.name || 'my-service'}`,
+      `  namespace: ${f.namespace || 'default'}`,
+      'spec:',
+      `  type: ${f.type || 'ClusterIP'}`,
+      '  selector:',
+      `    app: ${f.selector || 'my-app'}`,
+      '  ports:',
+      `    - protocol: ${f.protocol || 'TCP'}`,
+      `      port: ${f.port || 80}`,
+      `      targetPort: ${f.targetPort || 8080}`,
+    ];
+    if (f.type === 'NodePort' && f.nodePort) L.push(`      nodePort: ${f.nodePort}`);
+    return L;
+  }
+
+  function genIngress(b) {
+    const f    = b.fields;
+    const host = f.host || 'example.com';
+    const L = [
+      'apiVersion: networking.k8s.io/v1',
+      'kind: Ingress',
+      'metadata:',
+      `  name: ${f.name || 'my-ingress'}`,
+      `  namespace: ${f.namespace || 'default'}`,
+      '  annotations:',
+      '    nginx.ingress.kubernetes.io/rewrite-target: /',
+      'spec:',
+      `  ingressClassName: ${f.className || 'nginx'}`,
+      '  rules:',
+      `    - host: ${host}`,
+      '      http:',
+      '        paths:',
+      `          - path: ${f.path || '/'}`,
+      `            pathType: ${f.pathType || 'Prefix'}`,
+      '            backend:',
+      '              service:',
+      `                name: ${f.serviceName || 'my-service'}`,
+      '                port:',
+      `                  number: ${f.servicePort || 80}`,
+    ];
+    if (f.tlsEnabled) {
+      L.push('  tls:');
+      L.push('    - hosts:');
+      L.push(`        - ${host}`);
+      L.push(`      secretName: ${f.tlsSecret || 'my-tls-secret'}`);
+    }
+    return L;
+  }
+
+  function genNetworkPolicy(b) {
+    const f     = b.fields;
+    const types = [];
+    if (f.ingress) types.push('Ingress');
+    if (f.egress)  types.push('Egress');
+    const L = [
+      'apiVersion: networking.k8s.io/v1',
+      'kind: NetworkPolicy',
+      'metadata:',
+      `  name: ${f.name || 'my-network-policy'}`,
+      `  namespace: ${f.namespace || 'default'}`,
+      'spec:',
+      '  podSelector:',
+      '    matchLabels:',
+      `      app: ${f.podSelector || 'my-app'}`,
+      '  policyTypes:',
+      ...types.map(t => `    - ${t}`),
+    ];
+    if (f.ingress) {
+      L.push('  ingress:');
+      L.push('    - from:');
+      L.push('        - podSelector:');
+      L.push('            matchLabels:');
+      L.push(`              app: ${f.ingressFrom || 'frontend'}`);
+      if (f.ingressPort) {
+        L.push('      ports:');
+        L.push('        - protocol: TCP');
+        L.push(`          port: ${f.ingressPort}`);
+      }
+    }
+    if (f.egress) {
+      L.push('  egress:');
+      L.push('    - to:');
+      L.push('        - podSelector:');
+      L.push('            matchLabels:');
+      L.push(`              app: ${f.egressTo || 'backend'}`);
+      if (f.egressPort) {
+        L.push('      ports:');
+        L.push('        - protocol: TCP');
+        L.push(`          port: ${f.egressPort}`);
+      }
+    }
+    return L;
+  }
+
+  // ── Config ────────────────────────────────────────────────────────────────
+  function genNamespace(b) {
+    const name = b.fields.name || 'my-namespace';
+    return ['apiVersion: v1','kind: Namespace','metadata:',`  name: ${name}`,'  labels:',`    name: ${name}`];
+  }
+
+  function genConfigMap(b) {
+    const f = b.fields;
+    const L = ['apiVersion: v1','kind: ConfigMap','metadata:',`  name: ${f.name || 'my-config'}`,`  namespace: ${f.namespace || 'default'}`,'data:'];
+    String(f.data || 'KEY: value').split('\n').forEach(line => { const t = line.trim(); if (t) L.push(`  ${t}`); });
+    return L;
+  }
+
+  function genSecret(b) {
+    const f = b.fields;
+    const L = ['apiVersion: v1','kind: Secret','metadata:',`  name: ${f.name || 'my-secret'}`,`  namespace: ${f.namespace || 'default'}`,`type: ${f.secretType || 'Opaque'}`,'data:','  # Values must be base64 encoded'];
+    String(f.data || 'KEY: <base64>').split('\n').forEach(line => { const t = line.trim(); if (t && !t.startsWith('#')) L.push(`  ${t}`); });
+    return L;
+  }
+
+  function genLimitRange(b) {
+    const f = b.fields;
+    const L = ['apiVersion: v1','kind: LimitRange','metadata:',`  name: ${f.name || 'default-limits'}`,`  namespace: ${f.namespace || 'default'}`,'spec:','  limits:','    - type: Container'];
+    if (f.defaultCpu || f.defaultMem) {
+      L.push('      default:');
+      if (f.defaultCpu) L.push(`        cpu: ${f.defaultCpu}`);
+      if (f.defaultMem) L.push(`        memory: ${f.defaultMem}`);
+    }
+    if (f.defaultReqCpu || f.defaultReqMem) {
+      L.push('      defaultRequest:');
+      if (f.defaultReqCpu) L.push(`        cpu: ${f.defaultReqCpu}`);
+      if (f.defaultReqMem) L.push(`        memory: ${f.defaultReqMem}`);
+    }
+    if (f.maxCpu || f.maxMem) {
+      L.push('      max:');
+      if (f.maxCpu) L.push(`        cpu: "${f.maxCpu}"`);
+      if (f.maxMem) L.push(`        memory: ${f.maxMem}`);
+    }
+    return L;
+  }
+
+  function genResourceQuota(b) {
+    const f = b.fields;
+    const L = ['apiVersion: v1','kind: ResourceQuota','metadata:',`  name: ${f.name || 'my-quota'}`,`  namespace: ${f.namespace || 'default'}`,'spec:','  hard:'];
+    if (f.reqCpu)   L.push(`    requests.cpu: "${f.reqCpu}"`);
+    if (f.reqMem)   L.push(`    requests.memory: ${f.reqMem}`);
+    if (f.limCpu)   L.push(`    limits.cpu: "${f.limCpu}"`);
+    if (f.limMem)   L.push(`    limits.memory: ${f.limMem}`);
+    if (f.pods)     L.push(`    pods: "${f.pods}"`);
+    if (f.services) L.push(`    services: "${f.services}"`);
+    if (f.pvcs)     L.push(`    persistentvolumeclaims: "${f.pvcs}"`);
+    return L;
+  }
+
+  // ── Storage ───────────────────────────────────────────────────────────────
+  function genPVC(b) {
+    const f = b.fields;
+    const L = ['apiVersion: v1','kind: PersistentVolumeClaim','metadata:',`  name: ${f.name || 'my-pvc'}`,`  namespace: ${f.namespace || 'default'}`,'spec:','  accessModes:',`    - ${f.accessMode || 'ReadWriteOnce'}`,'  resources:','    requests:',`      storage: ${f.storage || '1Gi'}`];
+    if (f.storageClass) L.push(`  storageClassName: ${f.storageClass}`);
+    return L;
+  }
+
+  function genPV(b) {
+    const f = b.fields;
+    const L = [
+      'apiVersion: v1',
+      'kind: PersistentVolume',
+      'metadata:',
+      `  name: ${f.name || 'my-pv'}`,
+      'spec:',
+      '  capacity:',
+      `    storage: ${f.storage || '10Gi'}`,
+      '  accessModes:',
+      `    - ${f.accessMode || 'ReadWriteOnce'}`,
+      `  persistentVolumeReclaimPolicy: ${f.reclaimPolicy || 'Retain'}`,
+      `  storageClassName: ${f.storageClass || 'manual'}`,
+    ];
+    if (f.volumeType === 'nfs') {
+      L.push('  nfs:');
+      L.push(`    path: ${f.path || '/data/my-pv'}`);
+      L.push(`    server: ${f.server || '192.168.1.100'}`);
+    } else if (f.volumeType === 'local') {
+      L.push('  local:');
+      L.push(`    path: ${f.path || '/data/my-pv'}`);
+      L.push('  nodeAffinity:');
+      L.push('    required:');
+      L.push('      nodeSelectorTerms:');
+      L.push('        - matchExpressions:');
+      L.push('            - key: kubernetes.io/hostname');
+      L.push('              operator: In');
+      L.push('              values:');
+      L.push('                - my-node');
+    } else {
+      L.push('  hostPath:');
+      L.push(`    path: ${f.path || '/data/my-pv'}`);
+    }
+    return L;
+  }
+
+  function genStorageClass(b) {
+    const f = b.fields;
+    const L = [
+      'apiVersion: storage.k8s.io/v1',
+      'kind: StorageClass',
+      'metadata:',
+      `  name: ${f.name || 'fast'}`,
+      `provisioner: ${f.provisioner || 'kubernetes.io/no-provisioner'}`,
+      `reclaimPolicy: ${f.reclaimPolicy || 'Delete'}`,
+      `volumeBindingMode: ${f.volumeBindingMode || 'WaitForFirstConsumer'}`,
+      `allowVolumeExpansion: ${f.allowExpansion ? 'true' : 'false'}`,
+    ];
+    const params = String(f.parameters || 'type: gp3').split('\n').map(l => l.trim()).filter(Boolean);
+    if (params.length) { L.push('parameters:'); params.forEach(p => L.push(`  ${p}`)); }
+    return L;
+  }
+
+  // ── Identity & Scaling ────────────────────────────────────────────────────
+  function genServiceAccount(b) {
+    const f = b.fields;
+    return ['apiVersion: v1','kind: ServiceAccount','metadata:',`  name: ${f.name || 'my-service-account'}`,`  namespace: ${f.namespace || 'default'}`];
+  }
+
+  function genHPA(b) {
+    const f = b.fields;
+    return [
+      'apiVersion: autoscaling/v2','kind: HorizontalPodAutoscaler','metadata:',
+      `  name: ${f.name || 'my-hpa'}`,`  namespace: ${f.namespace || 'default'}`,'spec:',
+      '  scaleTargetRef:','    apiVersion: apps/v1','    kind: Deployment',
+      `    name: ${f.targetDeployment || 'my-app'}`,
+      `  minReplicas: ${f.minReplicas || 1}`,`  maxReplicas: ${f.maxReplicas || 10}`,
+      '  metrics:','    - type: Resource','      resource:','        name: cpu','        target:',
+      '          type: Utilization',`          averageUtilization: ${f.cpuUtilization || 80}`,
+    ];
+  }
+
+  function genPDB(b) {
+    const f = b.fields;
+    return [
+      'apiVersion: policy/v1','kind: PodDisruptionBudget','metadata:',
+      `  name: ${f.name || 'my-pdb'}`,`  namespace: ${f.namespace || 'default'}`,'spec:',
+      `  ${f.type || 'minAvailable'}: ${f.value || 1}`,'  selector:','    matchLabels:',
+      `      app: ${f.selector || 'my-app'}`,
+    ];
+  }
+
+  // ── RBAC ─────────────────────────────────────────────────────────────────
+  function genRole(b) {
+    const f     = b.fields;
+    const rules = childrenOf(b.id).filter(c => c.type === 'policyrule');
+    const L = ['apiVersion: rbac.authorization.k8s.io/v1','kind: Role','metadata:',`  name: ${f.name || 'my-role'}`,`  namespace: ${f.namespace || 'default'}`];
+    if (rules.length > 0) { L.push('rules:'); rules.forEach(r => L.push(...genPolicyRule(r))); }
+    else L.push('rules: []  # Drop a Policy Rule component inside');
+    return L;
+  }
+
+  function genClusterRole(b) {
+    const f     = b.fields;
+    const rules = childrenOf(b.id).filter(c => c.type === 'policyrule');
+    const L = ['apiVersion: rbac.authorization.k8s.io/v1','kind: ClusterRole','metadata:',`  name: ${f.name || 'my-cluster-role'}`];
+    if (rules.length > 0) { L.push('rules:'); rules.forEach(r => L.push(...genPolicyRule(r))); }
+    else L.push('rules: []  # Drop a Policy Rule component inside');
+    return L;
+  }
+
+  function genPolicyRule(b) {
+    const f      = b.fields;
+    const toList = s => '[' + String(s).split(',').map(v => `"${v.trim().replace(/^"|"$/g, '')}"`).join(', ') + ']';
+    return [
+      `  - apiGroups: ${toList(f.apiGroups || '""')}`,
+      `    resources: ${toList(f.resources || 'pods')}`,
+      `    verbs: ${toList(f.verbs || 'get,list,watch')}`,
+    ];
+  }
+
+  function genRoleBinding(b) {
+    const f        = b.fields;
+    const subjects = childrenOf(b.id).filter(c => c.type === 'subject');
+    const L = ['apiVersion: rbac.authorization.k8s.io/v1','kind: RoleBinding','metadata:',`  name: ${f.name || 'my-role-binding'}`,`  namespace: ${f.namespace || 'default'}`];
+    if (subjects.length > 0) { L.push('subjects:'); subjects.forEach(s => L.push(...genSubject(s))); }
+    else L.push('subjects: []  # Drop a Subject component inside');
+    L.push('roleRef:',`  kind: ${f.roleRefKind || 'Role'}`,`  name: ${f.roleRefName || 'my-role'}`,'  apiGroup: rbac.authorization.k8s.io');
+    return L;
+  }
+
+  function genClusterRoleBinding(b) {
+    const f        = b.fields;
+    const subjects = childrenOf(b.id).filter(c => c.type === 'subject');
+    const L = ['apiVersion: rbac.authorization.k8s.io/v1','kind: ClusterRoleBinding','metadata:',`  name: ${f.name || 'my-cluster-role-binding'}`];
+    if (subjects.length > 0) { L.push('subjects:'); subjects.forEach(s => L.push(...genSubject(s))); }
+    else L.push('subjects: []  # Drop a Subject component inside');
+    L.push('roleRef:','  kind: ClusterRole',`  name: ${f.roleRefName || 'my-cluster-role'}`,'  apiGroup: rbac.authorization.k8s.io');
+    return L;
+  }
+
+  function genSubject(b) {
+    const f = b.fields;
+    const L = [`  - kind: ${f.kind || 'ServiceAccount'}`,`    name: ${f.name || 'my-service-account'}`];
+    if (!f.kind || f.kind === 'ServiceAccount') L.push(`    namespace: ${f.namespace || 'default'}`);
+    return L;
+  }
+
+  // ─── Drag and Drop ────────────────────────────────────────────────────────
+  function wireDropZone(el, parentId) {
+    el.addEventListener('dragover', e => {
+      if (!dragType) return;
+      e.preventDefault(); e.stopPropagation();
+      const def        = DEFS[dragType];
+      const parentType = parentId ? (blocks.find(b => b.id === parentId) || {}).type : null;
+      if (def && def.parentTypes.includes(parentType)) {
+        el.classList.add('drag-over');
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      el.classList.remove('drag-over');
+      if (!dragType) return;
+      const def        = DEFS[dragType];
+      const parentType = parentId ? (blocks.find(b => b.id === parentId) || {}).type : null;
+      if (def && def.parentTypes.includes(parentType)) {
+        addBlock(dragType, parentId || null);
+      } else if (def) {
+        toast(`"${def.label}" cannot go here. Valid parent: ${def.parentTypes.map(p => p || 'top-level').join(', ')}.`);
+      }
+      dragType = null;
+    });
+  }
+
+  wireDropZone(document.getElementById('rootZone'), null);
+
+  // ─── Palette builder ─────────────────────────────────────────────────────
+  function buildPalette() {
+    const palette = document.getElementById('palette');
+    const extSvg  =
+      `<svg width="11" height="11" viewBox="0 0 24 24">` +
+      `<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>` +
+      `<polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>` +
+      `</svg>`;
+
+    PALETTE_SECTIONS.forEach(section => {
+      const sEl = document.createElement('div');
+      sEl.className = 'palette-section';
+      sEl.textContent = section.title;
+      palette.appendChild(sEl);
+
+      section.types.forEach(type => {
+        const def  = DEFS[type];
+        const item = document.createElement('div');
+        item.className  = 'palette-item';
+        item.draggable  = true;
+        item.dataset.type = type;
+        item.innerHTML  =
+          `<span class="palette-item-name">${def.icon} ${def.label}</span>` +
+          `<a class="palette-doc" href="${def.docUrl}" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="Kubernetes docs">${extSvg}</a>` +
+          `<span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="${ea(def.tip)}">?</span>`;
+        item.addEventListener('dragstart', e => {
+          dragType = type;
+          item.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'copy';
+        });
+        item.addEventListener('dragend', () => item.classList.remove('dragging'));
+        palette.appendChild(item);
+      });
+    });
+
+    // Quick templates
+    const tmplSec = document.createElement('div');
+    tmplSec.className = 'palette-section mt-3';
+    tmplSec.textContent = 'Quick Templates';
+    palette.appendChild(tmplSec);
+
+    const TEMPLATES = [
+      {name:'web-app',      label:'⚡ Web App',      tip:'Deployment (Container + Port) + ClusterIP Service.'},
+      {name:'full-stack',   label:'⚡ Full Stack',    tip:'Namespace + ConfigMap + Deployment (Container + env + readiness + resources) + Service + Ingress.'},
+      {name:'stateful-app', label:'⚡ Stateful App',  tip:'PVC + Deployment (Container + VolumeMount + Volume) + ClusterIP Service.'},
+      {name:'rbac-setup',   label:'⚡ RBAC Setup',    tip:'ServiceAccount + Role (PolicyRule) + RoleBinding (Subject) — a complete namespace RBAC pattern.'},
+    ];
+
+    TEMPLATES.forEach(t => {
+      const item = document.createElement('div');
+      item.className    = 'palette-item';
+      item.draggable    = false;
+      item.style.cursor = 'pointer';
+      item.onclick      = () => loadTemplate(t.name);
+      item.innerHTML    =
+        `<span class="palette-item-name">${t.label}</span>` +
+        `<span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="${t.tip}">?</span>`;
+      palette.appendChild(item);
+    });
+
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el =>
+      new bootstrap.Tooltip(el, { trigger: 'hover', delay: { show: 100, hide: 0 } })
+    );
+  }
+
+  // ─── Templates ────────────────────────────────────────────────────────────
+  function loadTemplate(name) {
+    if (blocks.length && !confirm('Replace current canvas with this template?')) return;
+    blocks = []; selectedId = null; idSeq = 0;
+
+    if (name === 'web-app') {
+      const dep = mkBlock('deployment', null);
+      dep.fields.name = 'web-app'; dep.fields.replicas = '2';
+      const con = mkBlock('container', dep.id);
+      con.fields.name = 'web'; con.fields.image = 'nginx:alpine';
+      const prt = mkBlock('containerport', con.id);
+      prt.fields.port = '80'; prt.fields.name = 'http';
+      const svc = mkBlock('service', null);
+      svc.fields.name = 'web-app-svc'; svc.fields.selector = 'web-app';
+      svc.fields.port = '80'; svc.fields.targetPort = '80';
+      blocks = [dep, con, prt, svc];
+    }
+
+    if (name === 'full-stack') {
+      const ns  = mkBlock('namespace', null); ns.fields.name = 'production';
+      const cm  = mkBlock('configmap', null);
+      cm.fields.name = 'app-config'; cm.fields.namespace = 'production';
+      cm.fields.data = 'APP_ENV: production\nLOG_LEVEL: info\nAPP_PORT: "8080"';
+      const dep = mkBlock('deployment', null);
+      dep.fields.name = 'api'; dep.fields.namespace = 'production'; dep.fields.replicas = '2';
+      const con = mkBlock('container', dep.id);
+      con.fields.name = 'api'; con.fields.image = 'my-api:latest'; con.fields.imagePullPolicy = 'Always';
+      const prt = mkBlock('containerport', con.id);
+      prt.fields.port = '8080'; prt.fields.name = 'http';
+      const env = mkBlock('envvar', con.id);
+      env.fields.name = 'APP_ENV'; env.fields.source = 'configmap';
+      env.fields.refName = 'app-config'; env.fields.refKey = 'APP_ENV';
+      const res = mkBlock('resources', con.id);
+      res.fields.cpuRequest = '100m'; res.fields.memRequest = '128Mi';
+      res.fields.cpuLimit = '500m'; res.fields.memLimit = '512Mi';
+      const rdy = mkBlock('readinessprobe', con.id);
+      rdy.fields.type = 'httpGet'; rdy.fields.path = '/health'; rdy.fields.port = '8080';
+      const svc = mkBlock('service', null);
+      svc.fields.name = 'api-svc'; svc.fields.namespace = 'production';
+      svc.fields.selector = 'api'; svc.fields.port = '80'; svc.fields.targetPort = '8080';
+      const ing = mkBlock('ingress', null);
+      ing.fields.name = 'api-ingress'; ing.fields.namespace = 'production';
+      ing.fields.host = 'api.example.com'; ing.fields.serviceName = 'api-svc';
+      blocks = [ns, cm, dep, con, prt, env, res, rdy, svc, ing];
+    }
+
+    if (name === 'stateful-app') {
+      const pvc = mkBlock('pvc', null);
+      pvc.fields.name = 'db-data'; pvc.fields.storage = '5Gi';
+      const dep = mkBlock('deployment', null);
+      dep.fields.name = 'postgres'; dep.fields.replicas = '1';
+      const con = mkBlock('container', dep.id);
+      con.fields.name = 'postgres'; con.fields.image = 'postgres:16';
+      const prt = mkBlock('containerport', con.id);
+      prt.fields.port = '5432'; prt.fields.name = 'postgres';
+      const env = mkBlock('envvar', con.id);
+      env.fields.name = 'POSTGRES_PASSWORD'; env.fields.source = 'secret';
+      env.fields.refName = 'postgres-secret'; env.fields.refKey = 'password';
+      const mnt = mkBlock('volumemount', con.id);
+      mnt.fields.name = 'db-data'; mnt.fields.mountPath = '/var/lib/postgresql/data';
+      const res = mkBlock('resources', con.id);
+      res.fields.cpuRequest = '250m'; res.fields.memRequest = '256Mi';
+      res.fields.cpuLimit = '1000m'; res.fields.memLimit = '1Gi';
+      const vol = mkBlock('volume', dep.id);
+      vol.fields.name = 'db-data'; vol.fields.type = 'pvc'; vol.fields.refName = 'db-data';
+      const svc = mkBlock('service', null);
+      svc.fields.name = 'postgres-svc'; svc.fields.selector = 'postgres';
+      svc.fields.port = '5432'; svc.fields.targetPort = '5432';
+      blocks = [pvc, dep, con, prt, env, mnt, res, vol, svc];
+    }
+
+    if (name === 'rbac-setup') {
+      const sa  = mkBlock('serviceaccount', null);
+      sa.fields.name = 'app-sa'; sa.fields.namespace = 'default';
+      const rol = mkBlock('role', null);
+      rol.fields.name = 'app-role'; rol.fields.namespace = 'default';
+      const rul = mkBlock('policyrule', rol.id);
+      rul.fields.apiGroups = '""'; rul.fields.resources = 'pods,pods/log'; rul.fields.verbs = 'get,list,watch';
+      const rul2 = mkBlock('policyrule', rol.id);
+      rul2.fields.apiGroups = 'apps'; rul2.fields.resources = 'deployments'; rul2.fields.verbs = 'get,list';
+      const rb  = mkBlock('rolebinding', null);
+      rb.fields.name = 'app-role-binding'; rb.fields.namespace = 'default';
+      rb.fields.roleRefKind = 'Role'; rb.fields.roleRefName = 'app-role';
+      const sub = mkBlock('subject', rb.id);
+      sub.fields.kind = 'ServiceAccount'; sub.fields.name = 'app-sa'; sub.fields.namespace = 'default';
+      blocks = [sa, rol, rul, rul2, rb, sub];
+    }
+
+    render();
+  }
+
+  // ─── Copy / Download ──────────────────────────────────────────────────────
+  function copyConfig() {
+    const text = document.getElementById('configOutput').textContent;
+    navigator.clipboard.writeText(text)
+      .then(() => toast('Copied to clipboard!'))
+      .catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove(); toast('Copied!');
+      });
+  }
+
+  function downloadConfig() {
+    const text = document.getElementById('configOutput').textContent;
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(new Blob([text], {type:'text/plain'}));
+    a.download = 'manifest.yaml'; a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function toast(msg) {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = 'toast align-items-center text-bg-warning border-0 show mb-2';
+    t.setAttribute('role', 'alert');
+    t.innerHTML = `<div class="d-flex"><div class="toast-body" style="font-size:.8rem">${ea(msg)}</div><button type="button" class="btn-close me-2 m-auto" onclick="this.closest('.toast').remove()"></button></div>`;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  buildPalette();
+  render();
+  </script>
+</body>
+</html>
