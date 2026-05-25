@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jenkinsfile Generator — Dayan Raj Tools</title>
+  <meta name="description" content="Free online Jenkinsfile generator. Drag and drop Pipeline, Stages, Steps, Agents, and more to build a ready-to-use Declarative Jenkinsfile instantly.">
+  <link rel="canonical" href="https://dayanraj.com/tools/jenkinsfile/">
+
+  <meta property="og:title" content="Jenkinsfile Generator — Dayan Raj Tools">
+  <meta property="og:description" content="Free online Jenkinsfile generator. Drag and drop Pipeline, Stages, Steps, Agents, and more to build a ready-to-use Declarative Jenkinsfile instantly.">
+  <meta property="og:url" content="https://dayanraj.com/tools/jenkinsfile/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://dayanraj.com/assets/img/og-default.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Jenkinsfile Generator — Dayan Raj Tools">
+  <meta name="twitter:description" content="Free online Jenkinsfile generator. Drag and drop Pipeline, Stages, Steps, and more to generate Declarative Jenkinsfiles instantly.">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Jenkinsfile Generator",
+    "description": "Free online Jenkinsfile generator. Drag and drop Pipeline, Stages, Steps, Agents, and more to build a ready-to-use Declarative Jenkinsfile.",
+    "url": "https://dayanraj.com/tools/jenkinsfile/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": {
+      "@type": "Person",
+      "name": "Dayan Raj",
+      "url": "https://dayanraj.com"
+    }
+  }
+  </script>
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .tool-layout {
+      display: grid;
+      grid-template-columns: 245px 1fr 430px;
+      flex: 1;
+      min-height: 0;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+    }
+
+    /* ── Palette ── */
+    .palette {
+      background: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      overflow-y: auto;
+      padding: 0.85rem;
+    }
+    .palette-heading { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .palette-section {
+      font-size: 0.67rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #6c757d; margin: 0.8rem 0 0.3rem;
+    }
+    .palette-item {
+      display: flex; flex-direction: row; align-items: center; gap: 0.45rem;
+      padding: 0.4rem 0.55rem; margin-bottom: 0.22rem;
+      border-radius: 0.35rem; border: 1px solid #dee2e6; background: #fff;
+      cursor: grab; font-size: 0.8rem; user-select: none;
+      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .palette-item:hover { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,.13); }
+    .palette-item.dragging { opacity: 0.35; cursor: grabbing; }
+    .palette-item-name { flex: 1; font-size: 0.8rem; font-weight: 600; }
+
+    /* Question-mark tip icon */
+    .palette-tip {
+      position: relative;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0; width: 15px; height: 15px; border-radius: 50%;
+      background: #e9ecef; color: #6c757d; font-size: 0.62rem; font-weight: 700;
+      cursor: help; line-height: 1; transition: background 0.12s, color 0.12s;
+    }
+    .palette-tip:hover { background: #0d6efd; color: #fff; }
+
+    /* Tooltip */
+    .tip-tooltip {
+      display: none;
+      position: fixed;
+      z-index: 9000;
+      max-width: 220px;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      padding: 0.5rem 0.65rem;
+      border-radius: 0.35rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      pointer-events: none;
+    }
+    .palette-tip:hover .tip-tooltip { display: block; }
+
+    /* External-link doc icon */
+    .palette-doc {
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0; width: 15px; height: 15px; border-radius: 0.2rem;
+      color: #adb5bd; text-decoration: none; transition: color 0.12s, background 0.12s;
+    }
+    .palette-doc:hover { color: #0d6efd; background: rgba(13,110,253,0.1); }
+    .palette-doc svg { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ── Canvas ── */
+    .canvas-area { overflow-y: auto; padding: 1.1rem; background: #fff; }
+    .drop-zone {
+      min-height: 180px; border: 2px dashed #dee2e6; border-radius: 0.5rem;
+      padding: 0.75rem; transition: border-color 0.12s, background 0.12s;
+    }
+    .drop-zone.drag-over { border-color: #0d6efd; background: rgba(13,110,253,.04); }
+    .canvas-empty { text-align: center; color: #adb5bd; padding: 2.5rem 1rem; pointer-events: none; }
+
+    /* ── Block cards ── */
+    .block-card {
+      border: 1px solid #dee2e6; border-radius: 0.45rem; margin-bottom: 0.6rem;
+      background: #fff; transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .block-card.selected { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,.18); }
+    .block-card-header {
+      display: flex; align-items: center; gap: 0.4rem; padding: 0.42rem 0.65rem;
+      background: #f8f9fa; border-bottom: 1px solid #dee2e6;
+      border-radius: 0.45rem 0.45rem 0 0; cursor: pointer; user-select: none;
+    }
+    .block-card.selected .block-card-header { background: #e8f0ff; border-bottom-color: #b6d0ff; }
+    .block-card-title { font-size: 0.8rem; font-weight: 600; flex: 1; }
+    .block-actions { display: flex; gap: 0.2rem; }
+    .blk-btn {
+      border: none; background: none; padding: 0.1rem 0.28rem; border-radius: 0.22rem;
+      color: #6c757d; cursor: pointer; font-size: 0.72rem; line-height: 1;
+    }
+    .blk-btn:hover { background: #e9ecef; color: #212529; }
+    .blk-btn.del:hover { background: #f8d7da; color: #842029; }
+    .block-body { padding: 0.65rem; }
+    .blk-field { margin-bottom: 0.45rem; }
+    .blk-field label { font-size: 0.72rem; font-weight: 500; color: #6c757d; display: block; margin-bottom: 0.15rem; }
+    .blk-field input, .blk-field select, .blk-field textarea { font-size: 0.78rem; padding: 0.28rem 0.45rem; }
+    .children-zone {
+      margin-top: 0.5rem; border: 1.5px dashed #dee2e6; border-radius: 0.35rem;
+      min-height: 52px; padding: 0.4rem; transition: border-color 0.12s, background 0.12s;
+    }
+    .children-zone.drag-over { border-color: #0d6efd; background: rgba(13,110,253,.04); }
+    .children-zone-hint { font-size: 0.68rem; color: #adb5bd; text-align: center; padding: 0.5rem 0; }
+
+    /* ── Type badges ── */
+    .tbadge {
+      font-size: 0.62rem; padding: 0.08rem 0.38rem; border-radius: 1rem;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
+    }
+    .tb-pipeline          { background:#dbeafe; color:#1e40af; }
+    .tb-agent             { background:#dcfce7; color:#14532d; }
+    .tb-environment       { background:#fef9c3; color:#713f12; }
+    .tb-options           { background:#ede9fe; color:#4c1d95; }
+    .tb-parameters        { background:#ffedd5; color:#9a3412; }
+    .tb-triggers          { background:#ccfbf1; color:#134e4a; }
+    .tb-stages            { background:#dbeafe; color:#1e3a5f; }
+    .tb-stage             { background:#d1fae5; color:#065f46; }
+    .tb-when              { background:#fef3c7; color:#92400e; }
+    .tb-steps             { background:#e2e8f0; color:#334155; }
+    .tb-sh                { background:#e0f2fe; color:#075985; }
+    .tb-echo              { background:#e0e7ff; color:#3730a3; }
+    .tb-script            { background:#ccfbf1; color:#0f766e; }
+    .tb-checkout          { background:#ede9fe; color:#6d28d9; }
+    .tb-withcredentials   { background:#fee2e2; color:#991b1b; }
+    .tb-retry             { background:#fce7f3; color:#9d174d; }
+    .tb-timeout           { background:#cffafe; color:#164e63; }
+    .tb-parallel          { background:#ecfccb; color:#365314; }
+    .tb-parallelbranch    { background:#d1fae5; color:#064e3b; }
+    .tb-post              { background:#fce7f3; color:#831843; }
+
+    /* ── Output panel ── */
+    .config-panel {
+      display: flex; flex-direction: column; background: #1e1e2e; color: #cdd6f4;
+      border-left: 1px solid #313244; overflow: hidden;
+    }
+    .config-panel-head {
+      padding: 0.65rem 0.9rem; border-bottom: 1px solid #313244;
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .config-panel-title { font-size: 0.8rem; font-weight: 600; color: #cba6f7; }
+    .config-output {
+      flex: 1; overflow-y: auto; padding: 0.9rem 1rem; margin: 0;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.76rem; line-height: 1.72; background: transparent; color: inherit;
+      border: none; white-space: pre; tab-size: 4;
+    }
+    .config-footer {
+      padding: 0.6rem 0.9rem; border-top: 1px solid #313244;
+      display: flex; gap: 0.5rem; flex-shrink: 0;
+    }
+    #toastContainer { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; }
+
+    @media (max-width: 991px) {
+      .tool-layout { grid-template-columns: 1fr; height: auto; overflow: auto; }
+      .config-panel { min-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg bg-dark navbar-dark">
+    <div class="container-fluid px-3">
+      <a class="navbar-brand fw-semibold" href="/">Dayan Raj</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <span class="navbar-text text-white-50 small">/ Tools / Jenkinsfile Generator</span>
+          </li>
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="/about.html">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="https://github.com/koavan" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="tool-layout">
+    <div class="palette" id="palette"><div class="palette-heading">Components</div></div>
+
+    <div class="canvas-area">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div>
+          <span class="fw-semibold" style="font-size:0.88rem;">Pipeline Canvas</span>
+          <span class="text-muted ms-2" style="font-size:0.75rem;">drag components from the left</span>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="clearAll()">Clear all</button>
+      </div>
+      <div class="drop-zone" id="rootZone">
+        <div class="canvas-empty" id="canvasEmpty">
+          <div style="font-size:2.2rem;">⚙</div>
+          <div class="mt-2 fw-semibold">Drag a Pipeline component here to start</div>
+          <div class="small mt-1">Then drop sections like Agent, Stages, and Post inside it</div>
+        </div>
+        <div id="blockList"></div>
+      </div>
+    </div>
+
+    <div class="config-panel">
+      <div class="config-panel-head">
+        <span class="config-panel-title">Jenkinsfile</span>
+        <span class="badge bg-secondary" id="blockCount" style="font-size:0.68rem;">0 blocks</span>
+      </div>
+      <pre class="config-output" id="configOutput">// Your Jenkinsfile will appear here.
+// Drag a Pipeline component onto the canvas to begin.</pre>
+      <div class="config-footer">
+        <button class="btn btn-sm btn-outline-light" onclick="copyConfig()">Copy</button>
+        <button class="btn btn-sm btn-outline-light" onclick="downloadConfig()">Download Jenkinsfile</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  // ─── Component definitions ────────────────────────────────────────────────
+  const DEFS = {
+    // ── Pipeline Root ────────────────────────────────────────────────────────
+    pipeline: {
+      label: 'Pipeline', icon: '⚙', badge: 'tb-pipeline', badgeText: 'pipeline',
+      parentTypes: [null],
+      childTypes: ['agent', 'environment', 'options', 'parameters', 'triggers', 'stages', 'post'],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#declarative-pipeline',
+      tip: 'The root block of a Declarative Pipeline. All other directives live inside this block. A Jenkinsfile must contain exactly one pipeline block.',
+      fields: [],
+    },
+
+    // ── Sections (children of pipeline) ─────────────────────────────────────
+    agent: {
+      label: 'Agent', icon: '🤖', badge: 'tb-agent', badgeText: 'agent',
+      parentTypes: ['pipeline', 'stage'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#agent',
+      tip: 'Specifies where the pipeline or stage will execute. Options: any (any available node), none (distributed across stages), label (node label), docker (Docker image), or kubernetes (Kubernetes pod).',
+      fields: [
+        {k:'type',   label:'Type',                          t:'select',   d:'any',   opts:['any','none','label','docker','kubernetes']},
+        {k:'label',  label:'Label (type = label)',          t:'text',     d:'linux'},
+        {k:'image',  label:'Docker Image (type = docker)',  t:'text',     d:'node:20-alpine'},
+        {k:'args',   label:'Docker Args (optional)',        t:'text',     d:''},
+        {k:'yaml',   label:'Pod YAML (type = kubernetes)',  t:'textarea', d:''},
+      ],
+    },
+
+    environment: {
+      label: 'Environment', icon: '🌍', badge: 'tb-environment', badgeText: 'environment',
+      parentTypes: ['pipeline'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#environment',
+      tip: 'Declares environment variables available to all steps. Use credentials() helper to inject Jenkins credentials as env vars (they are masked in logs).',
+      fields: [
+        {k:'vars', label:'Variables (KEY=value, one per line)', t:'textarea', d:'APP_ENV=production\nDEPLOY_TO=staging'},
+      ],
+    },
+
+    options: {
+      label: 'Options', icon: '🔧', badge: 'tb-options', badgeText: 'options',
+      parentTypes: ['pipeline'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#options',
+      tip: 'Configures pipeline-wide behaviors such as overall timeout, retry count, timestamp prefixes in console output, and build discard policies.',
+      fields: [
+        {k:'timeout',             label:'Timeout (minutes, 0 = disabled)',  t:'text',     d:'60'},
+        {k:'retry',               label:'Retry Count (0 = disabled)',        t:'text',     d:'0'},
+        {k:'timestamps',          label:'Add Timestamps to Logs',            t:'checkbox', d:true},
+        {k:'skipDefaultCheckout', label:'Skip Default Checkout',             t:'checkbox', d:false},
+        {k:'buildDiscarder',      label:'Keep Last N Builds (0 = all)',      t:'text',     d:'10'},
+      ],
+    },
+
+    parameters: {
+      label: 'Parameters', icon: '🎛', badge: 'tb-parameters', badgeText: 'parameters',
+      parentTypes: ['pipeline'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#parameters',
+      tip: 'Defines build parameters that users can supply when triggering a run manually. Supports string, boolean, and choice types. Access values via params.NAME.',
+      fields: [
+        {k:'params', label:'Parameters (type:NAME:default:description — one per line)', t:'textarea',
+         d:'string:BRANCH:main:Branch to build\nboolean:DEPLOY:false:Deploy after build\nchoice:ENV:dev|staging|prod:Target environment'},
+      ],
+    },
+
+    triggers: {
+      label: 'Triggers', icon: '⏰', badge: 'tb-triggers', badgeText: 'triggers',
+      parentTypes: ['pipeline'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#triggers',
+      tip: 'Defines automatic build triggers. cron runs on a schedule, pollSCM polls for SCM changes, upstream triggers when another project completes.',
+      fields: [
+        {k:'cron',     label:'Cron Schedule (empty = disabled)',      t:'text', d:'H/15 * * * *'},
+        {k:'pollSCM',  label:'Poll SCM Schedule (empty = disabled)',  t:'text', d:''},
+        {k:'upstream', label:'Upstream Projects (empty = disabled)',  t:'text', d:''},
+      ],
+    },
+
+    stages: {
+      label: 'Stages', icon: '📋', badge: 'tb-stages', badgeText: 'stages',
+      parentTypes: ['pipeline'],
+      childTypes: ['stage'],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#stages',
+      tip: 'The main body of the pipeline. Contains one or more stage blocks that define the actual work. Required in every Declarative Pipeline.',
+      fields: [],
+    },
+
+    post: {
+      label: 'Post', icon: '📮', badge: 'tb-post', badgeText: 'post',
+      parentTypes: ['pipeline', 'stage'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#post',
+      tip: 'Defines actions to run after a pipeline or stage finishes, based on the final status: always, success, failure, unstable, aborted, or changed.',
+      fields: [
+        {k:'always',   label:'Always (runs regardless of status)',  t:'textarea', d:''},
+        {k:'success',  label:'On Success',                          t:'textarea', d:"echo 'Build succeeded!'"},
+        {k:'failure',  label:'On Failure',                          t:'textarea', d:"echo 'Build failed!'"},
+        {k:'unstable', label:'On Unstable',                         t:'textarea', d:''},
+        {k:'aborted',  label:'On Aborted',                          t:'textarea', d:''},
+        {k:'changed',  label:'On Changed (status changed)',         t:'textarea', d:''},
+      ],
+    },
+
+    // ── Stage and its children ───────────────────────────────────────────────
+    stage: {
+      label: 'Stage', icon: '🎯', badge: 'tb-stage', badgeText: 'stage',
+      parentTypes: ['stages'],
+      childTypes: ['agent', 'when', 'steps', 'parallel', 'post'],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#stage',
+      tip: 'A logical division of work (e.g. Build, Test, Deploy). Each stage can have its own agent, conditional logic (when), sequential steps, or parallel branches.',
+      fields: [
+        {k:'name', label:'Stage Name', t:'text', d:'Build'},
+      ],
+    },
+
+    when: {
+      label: 'When', icon: '🔀', badge: 'tb-when', badgeText: 'when',
+      parentTypes: ['stage'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#when',
+      tip: 'Conditionally executes the stage based on a branch name, environment variable value, or a Groovy expression. The stage is skipped when the condition is false.',
+      fields: [
+        {k:'condition', label:'Condition Type',                        t:'select', d:'branch', opts:['branch','environment','expression','tag','changeRequest','not']},
+        {k:'branch',    label:'Branch Pattern (condition = branch)',   t:'text',   d:'main'},
+        {k:'envName',   label:'Env Variable (condition = environment)', t:'text',  d:'DEPLOY'},
+        {k:'envValue',  label:'Env Value',                             t:'text',   d:'true'},
+        {k:'expression',label:'Groovy Expression (condition = expression)', t:'text', d:"env.BRANCH_NAME == 'main'"},
+        {k:'tag',       label:'Tag Pattern (condition = tag)',         t:'text',   d:'v*'},
+      ],
+    },
+
+    steps: {
+      label: 'Steps', icon: '🪜', badge: 'tb-steps', badgeText: 'steps',
+      parentTypes: ['stage'],
+      childTypes: ['sh', 'echo', 'script', 'checkout', 'withCredentials', 'retry', 'timeout'],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#steps',
+      tip: 'Contains the individual step directives that perform the actual work in a stage. Drop sh, echo, script, checkout, and other steps inside.',
+      fields: [],
+    },
+
+    parallel: {
+      label: 'Parallel', icon: '⬛', badge: 'tb-parallel', badgeText: 'parallel',
+      parentTypes: ['stage'],
+      childTypes: ['parallelBranch'],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#parallel',
+      tip: 'Executes multiple branches simultaneously. Each branch runs as an independent sub-stage. A stage can have parallel OR steps, not both.',
+      fields: [
+        {k:'failFast', label:'Fail Fast (abort others on failure)', t:'checkbox', d:true},
+      ],
+    },
+
+    parallelBranch: {
+      label: 'Parallel Branch', icon: '🌿', badge: 'tb-parallelbranch', badgeText: 'branch',
+      parentTypes: ['parallel'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#parallel',
+      tip: 'A named branch inside a parallel block. Each branch runs concurrently and can specify its own agent and steps.',
+      fields: [
+        {k:'name',  label:'Branch Name',                   t:'text',     d:'Branch A'},
+        {k:'agent', label:'Agent (empty = inherit parent)', t:'text',     d:''},
+        {k:'steps', label:'Steps (one step per line)',      t:'textarea', d:"sh 'make test-unit'"},
+      ],
+    },
+
+    // ── Steps ────────────────────────────────────────────────────────────────
+    sh: {
+      label: 'Shell (sh)', icon: '💻', badge: 'tb-sh', badgeText: 'sh',
+      parentTypes: ['steps'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/pipeline/steps/workflow-durable-task-step/#sh-shell-script',
+      tip: 'Runs a shell command or script on Unix/Linux agents. Use triple single-quotes (\'\'\'…\'\'\') for multi-line scripts. On Windows, use the bat step instead.',
+      fields: [
+        {k:'script',       label:'Script',                    t:'textarea', d:"echo 'Hello World'"},
+        {k:'returnStdout', label:'Return Stdout as Variable', t:'checkbox', d:false},
+        {k:'returnStatus', label:'Return Exit Status',        t:'checkbox', d:false},
+        {k:'label',        label:'Step Label (optional)',      t:'text',     d:''},
+      ],
+    },
+
+    echo: {
+      label: 'Echo', icon: '📢', badge: 'tb-echo', badgeText: 'echo',
+      parentTypes: ['steps'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/pipeline/steps/workflow-basic-steps/#echo-print-message',
+      tip: 'Prints a message to the build log. Useful for status updates, debug output, and displaying variable values.',
+      fields: [
+        {k:'message', label:'Message', t:'text', d:'Building...'},
+      ],
+    },
+
+    script: {
+      label: 'Script', icon: '📜', badge: 'tb-script', badgeText: 'script',
+      parentTypes: ['steps'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/book/pipeline/syntax/#script',
+      tip: 'Executes a Groovy script block within a Declarative Pipeline. Gives access to Scripted Pipeline features like loops, conditionals, and try/catch.',
+      fields: [
+        {k:'code', label:'Groovy Code', t:'textarea', d:"def msg = 'Hello'\necho msg"},
+      ],
+    },
+
+    checkout: {
+      label: 'Checkout', icon: '📥', badge: 'tb-checkout', badgeText: 'checkout',
+      parentTypes: ['steps'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/pipeline/steps/workflow-scm-step/#checkout-general-scm',
+      tip: 'Checks out source code from a version control system. "checkout scm" uses the pipeline\'s own configured repository. Use "git" for an explicit URL.',
+      fields: [
+        {k:'type',          label:'Checkout Type',           t:'select', d:'scm', opts:['scm','git']},
+        {k:'url',           label:'Git URL (type = git)',    t:'text',   d:'https://github.com/org/repo.git'},
+        {k:'branch',        label:'Branch (type = git)',     t:'text',   d:'*/main'},
+        {k:'credentialsId', label:'Credentials ID',         t:'text',   d:''},
+      ],
+    },
+
+    withCredentials: {
+      label: 'withCredentials', icon: '🔐', badge: 'tb-withcredentials', badgeText: 'credentials',
+      parentTypes: ['steps'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/pipeline/steps/credentials-binding/#withcredentials-bind-credentials-to-variables',
+      tip: 'Binds Jenkins credentials to local variables within the block scope. Sensitive values are masked in console output. Requires the Credentials Binding plugin.',
+      fields: [
+        {k:'type',          label:'Credential Type',             t:'select',   d:'usernamePassword', opts:['usernamePassword','string','sshUserPrivateKey','file']},
+        {k:'credentialsId', label:'Credentials ID',              t:'text',     d:'my-credentials'},
+        {k:'usernameVar',   label:'Username Variable',           t:'text',     d:'USERNAME'},
+        {k:'passwordVar',   label:'Password Variable',           t:'text',     d:'PASSWORD'},
+        {k:'variable',      label:'Variable Name (type = string/file)', t:'text', d:'SECRET_TOKEN'},
+        {k:'keyFileVar',    label:'Key File Variable (type = ssh)', t:'text',  d:'SSH_KEY'},
+        {k:'steps',         label:'Steps Inside (one per line)', t:'textarea', d:"sh 'docker login -u $USERNAME -p $PASSWORD'"},
+      ],
+    },
+
+    retry: {
+      label: 'Retry', icon: '🔄', badge: 'tb-retry', badgeText: 'retry',
+      parentTypes: ['steps'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/pipeline/steps/workflow-basic-steps/#retry-retry-the-body-up-to-n-times',
+      tip: 'Retries the contained steps up to N times on failure. Useful for flaky network calls, unreliable external services, or intermittent test failures.',
+      fields: [
+        {k:'count', label:'Retry Count',              t:'text',     d:'3'},
+        {k:'steps', label:'Steps (one per line)',     t:'textarea', d:"sh 'curl -f https://example.com/health'"},
+      ],
+    },
+
+    timeout: {
+      label: 'Timeout', icon: '⏱', badge: 'tb-timeout', badgeText: 'timeout',
+      parentTypes: ['steps'],
+      childTypes: [],
+      docUrl: 'https://www.jenkins.io/doc/pipeline/steps/workflow-basic-steps/#timeout-enforce-time-limit',
+      tip: 'Enforces a maximum time limit on the contained steps. If the steps do not complete within the specified time the build is aborted with a failure.',
+      fields: [
+        {k:'time',  label:'Time',                  t:'text',     d:'30'},
+        {k:'unit',  label:'Unit',                  t:'select',   d:'MINUTES', opts:['SECONDS','MINUTES','HOURS']},
+        {k:'steps', label:'Steps (one per line)',   t:'textarea', d:"sh 'make test'"},
+      ],
+    },
+  };
+
+  // ─── Palette sections ────────────────────────────────────────────────────
+  const PALETTE_SECTIONS = [
+    {title: 'Pipeline Root',        types: ['pipeline']},
+    {title: 'Pipeline Sections',    types: ['agent', 'environment', 'options', 'parameters', 'triggers', 'stages', 'post']},
+    {title: 'Inside Stages',        types: ['stage']},
+    {title: 'Inside Stage',         types: ['when', 'steps', 'parallel']},
+    {title: 'Inside Parallel',      types: ['parallelBranch']},
+    {title: 'Inside Steps',         types: ['sh', 'echo', 'script', 'checkout', 'withCredentials', 'retry', 'timeout']},
+  ];
+
+  // ─── State ───────────────────────────────────────────────────────────────
+  let blocks = [];
+  let selectedId = null;
+  let idSeq = 0;
+  let dragType = null;
+
+  function uid() { return 'b' + (++idSeq); }
+
+  function mkBlock(type, parentId) {
+    const def = DEFS[type];
+    const fields = {};
+    def.fields.forEach(f => { fields[f.k] = f.d; });
+    return { id: uid(), type, parentId: parentId || null, fields, collapsed: false };
+  }
+
+  function addBlock(type, parentId) {
+    const b = mkBlock(type, parentId || null);
+    blocks.push(b);
+    render();
+    selectedId = b.id;
+    render();
+    return b;
+  }
+
+  function deleteBlock(id) {
+    const desc = allDescendants(id);
+    desc.push(id);
+    blocks = blocks.filter(b => !desc.includes(b.id));
+    if (desc.includes(selectedId)) selectedId = null;
+    render();
+  }
+
+  function allDescendants(id) {
+    const direct = blocks.filter(b => b.parentId === id).map(b => b.id);
+    return direct.flatMap(cid => [cid, ...allDescendants(cid)]);
+  }
+
+  function childrenOf(pid) { return blocks.filter(b => b.parentId === pid); }
+  function topLevel()      { return blocks.filter(b => b.parentId === null); }
+
+  function clearAll() {
+    if (!blocks.length) return;
+    if (!confirm('Remove all blocks?')) return;
+    blocks = []; selectedId = null; render();
+  }
+
+  function updateField(id, k, v) {
+    const b = blocks.find(b => b.id === id);
+    if (b) { b.fields[k] = v; refreshOutput(); }
+  }
+
+  function toggleCollapse(id) {
+    const b = blocks.find(b => b.id === id);
+    if (b) { b.collapsed = !b.collapsed; render(); }
+  }
+
+  // ─── Drag & Drop ─────────────────────────────────────────────────────────
+  function wirePaletteItem(el, type) {
+    el.draggable = true;
+    el.addEventListener('dragstart', e => {
+      dragType = type;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    el.addEventListener('dragend', () => {
+      dragType = null;
+      el.classList.remove('dragging');
+    });
+  }
+
+  function wireDropZone(zone, parentId) {
+    zone.addEventListener('dragover', e => {
+      if (!dragType) return;
+      const def = DEFS[dragType];
+      const allowed = parentId === null
+        ? def.parentTypes.includes(null)
+        : def.parentTypes.includes(blocks.find(b => b.id === parentId)?.type);
+      if (allowed) { e.preventDefault(); zone.classList.add('drag-over'); }
+    });
+    zone.addEventListener('dragleave', e => {
+      if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+    });
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.remove('drag-over');
+      if (!dragType) return;
+      const def = DEFS[dragType];
+      const allowed = parentId === null
+        ? def.parentTypes.includes(null)
+        : def.parentTypes.includes(blocks.find(b => b.id === parentId)?.type);
+      if (allowed) addBlock(dragType, parentId);
+    });
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────
+  function render() {
+    const list  = document.getElementById('blockList');
+    const empty = document.getElementById('canvasEmpty');
+    const top   = topLevel();
+    empty.style.display = top.length ? 'none' : 'block';
+    list.innerHTML = '';
+    top.forEach(b => list.appendChild(mkCardEl(b)));
+    document.getElementById('blockCount').textContent =
+      blocks.length + ' block' + (blocks.length !== 1 ? 's' : '');
+    refreshOutput();
+  }
+
+  function mkCardEl(block) {
+    const def = DEFS[block.type];
+    const card = document.createElement('div');
+    card.className = 'block-card' + (block.id === selectedId ? ' selected' : '');
+    card.dataset.id = block.id;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'block-card-header';
+    hdr.innerHTML =
+      `<span>${def.icon}</span>` +
+      `<span class="block-card-title">${def.label}` +
+      (block.fields.name ? ` <span style="color:#6c757d;font-weight:400">— ${ea(block.fields.name)}</span>` : '') +
+      `</span>` +
+      `<span class="tbadge ${def.badge}">${def.badgeText}</span>` +
+      `<div class="block-actions ms-1">` +
+        `<button class="blk-btn" onclick="toggleCollapse('${block.id}')">${block.collapsed ? '▶' : '▼'}</button>` +
+        `<button class="blk-btn del" onclick="event.stopPropagation();deleteBlock('${block.id}')">✕</button>` +
+      `</div>`;
+    hdr.addEventListener('click', e => {
+      if (e.target.closest('.block-actions')) return;
+      selectedId = block.id; render();
+    });
+    card.appendChild(hdr);
+
+    if (!block.collapsed) {
+      const body = document.createElement('div');
+      body.className = 'block-body';
+
+      def.fields.forEach(f => {
+        const fd  = document.createElement('div');
+        fd.className = 'blk-field';
+        const eid = `${block.id}_${f.k}`;
+        const val = block.fields[f.k];
+        if (f.t === 'checkbox') {
+          fd.innerHTML =
+            `<div class="form-check">` +
+            `<input class="form-check-input" type="checkbox" id="${eid}"${val ? ' checked' : ''} ` +
+            `onchange="updateField('${block.id}','${f.k}',this.checked)">` +
+            `<label class="form-check-label" for="${eid}" style="font-size:.72rem">${f.label}</label>` +
+            `</div>`;
+        } else if (f.t === 'select') {
+          const opts = f.opts.map(o => `<option${val === o ? ' selected' : ''}>${o}</option>`).join('');
+          fd.innerHTML = `<label>${f.label}</label><select class="form-select form-select-sm" onchange="updateField('${block.id}','${f.k}',this.value)">${opts}</select>`;
+        } else if (f.t === 'textarea') {
+          fd.innerHTML = `<label>${f.label}</label><textarea class="form-control form-control-sm" rows="3" oninput="updateField('${block.id}','${f.k}',this.value)">${ea(val)}</textarea>`;
+        } else {
+          fd.innerHTML = `<label>${f.label}</label><input type="text" class="form-control form-control-sm" value="${ea(val)}" oninput="updateField('${block.id}','${f.k}',this.value)">`;
+        }
+        body.appendChild(fd);
+      });
+
+      if (def.childTypes.length > 0) {
+        const ch   = childrenOf(block.id);
+        const zone = document.createElement('div');
+        zone.className = 'children-zone';
+        zone.dataset.pid = block.id;
+        if (!ch.length) {
+          zone.innerHTML = `<div class="children-zone-hint">Drop here: ${def.childTypes.join(', ')}</div>`;
+        } else {
+          ch.forEach(c => zone.appendChild(mkCardEl(c)));
+        }
+        wireDropZone(zone, block.id);
+        body.appendChild(zone);
+      }
+      card.appendChild(body);
+    }
+    return card;
+  }
+
+  function ea(s) {
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/"/g,'&quot;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  // ─── Build palette ────────────────────────────────────────────────────────
+  function buildPalette() {
+    const pal = document.getElementById('palette');
+
+    PALETTE_SECTIONS.forEach(sec => {
+      const heading = document.createElement('div');
+      heading.className = 'palette-section';
+      heading.textContent = sec.title;
+      pal.appendChild(heading);
+
+      sec.types.forEach(type => {
+        const def  = DEFS[type];
+        const item = document.createElement('div');
+        item.className = 'palette-item';
+
+        // Tip icon with tooltip
+        const tipEl = document.createElement('span');
+        tipEl.className = 'palette-tip';
+        tipEl.textContent = '?';
+        const tooltipEl = document.createElement('span');
+        tooltipEl.className = 'tip-tooltip';
+        tooltipEl.textContent = def.tip;
+        tipEl.appendChild(tooltipEl);
+
+        // Tooltip positioning on mouse move
+        tipEl.addEventListener('mousemove', e => {
+          const tt = tipEl.querySelector('.tip-tooltip');
+          const pad = 10;
+          let x = e.clientX + pad;
+          let y = e.clientY + pad;
+          tt.style.display = 'block';
+          const rect = tt.getBoundingClientRect();
+          if (x + rect.width > window.innerWidth - pad) x = e.clientX - rect.width - pad;
+          if (y + rect.height > window.innerHeight - pad) y = e.clientY - rect.height - pad;
+          tt.style.left = x + 'px';
+          tt.style.top  = y + 'px';
+        });
+        tipEl.addEventListener('mouseleave', () => {
+          const tt = tipEl.querySelector('.tip-tooltip');
+          tt.style.display = 'none';
+        });
+
+        // Doc icon (external link)
+        const docEl = document.createElement('a');
+        docEl.className = 'palette-doc';
+        docEl.href      = def.docUrl;
+        docEl.target    = '_blank';
+        docEl.rel       = 'noopener noreferrer';
+        docEl.title     = 'Jenkins documentation';
+        docEl.innerHTML = `<svg viewBox="0 0 24 24" width="10" height="10">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>`;
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'palette-item-name';
+        nameEl.textContent = `${def.icon} ${def.label}`;
+
+        item.appendChild(tipEl);
+        item.appendChild(nameEl);
+        item.appendChild(docEl);
+
+        wirePaletteItem(item, type);
+        pal.appendChild(item);
+      });
+    });
+  }
+
+  // ─── Jenkinsfile generation ───────────────────────────────────────────────
+  function refreshOutput() {
+    document.getElementById('configOutput').textContent = buildJenkinsfile();
+  }
+
+  function buildJenkinsfile() {
+    const pipelines = topLevel().filter(b => b.type === 'pipeline');
+    if (!pipelines.length) {
+      return '// Your Jenkinsfile will appear here.\n// Drag a Pipeline component onto the canvas to begin.';
+    }
+    return pipelines.map(p => genPipeline(p)).join('\n\n');
+  }
+
+  function ind(n) { return ' '.repeat(n * 4); }
+
+  // ─── Pipeline ────────────────────────────────────────────────────────────
+  function genPipeline(b) {
+    const L = ['pipeline {'];
+    const ch = childrenOf(b.id);
+
+    // Agent (required — fallback to 'any')
+    const agent = ch.find(c => c.type === 'agent');
+    if (agent) { L.push(...genAgent(agent, 1)); }
+    else        { L.push(`${ind(1)}agent any`); }
+
+    // Optional ordered sections
+    const env     = ch.find(c => c.type === 'environment');
+    const opts    = ch.find(c => c.type === 'options');
+    const params  = ch.find(c => c.type === 'parameters');
+    const trigs   = ch.find(c => c.type === 'triggers');
+    const stages  = ch.find(c => c.type === 'stages');
+    const post    = ch.find(c => c.type === 'post');
+
+    if (env)    L.push(...genEnvironment(env, 1));
+    if (opts)   L.push(...genOptions(opts, 1));
+    if (params) L.push(...genParameters(params, 1));
+    if (trigs)  L.push(...genTriggers(trigs, 1));
+
+    if (stages) {
+      L.push(...genStages(stages, 1));
+    } else {
+      L.push(`${ind(1)}stages {`);
+      L.push(`${ind(2)}// Drop a Stages component here`);
+      L.push(`${ind(1)}}`);
+    }
+
+    if (post) L.push(...genPost(post, 1));
+
+    L.push('}');
+    return L.join('\n');
+  }
+
+  // ─── Agent ───────────────────────────────────────────────────────────────
+  function genAgent(b, depth) {
+    const f = b.fields;
+    const p = ind(depth);
+    const p2 = ind(depth + 1);
+    switch (f.type) {
+      case 'none':
+        return [`${p}agent none`];
+      case 'any':
+        return [`${p}agent any`];
+      case 'label':
+        return [`${p}agent { label '${f.label || 'linux'}' }`];
+      case 'docker': {
+        const L = [`${p}agent {`, `${p2}docker {`, `${p2+ind(1)}image '${f.image || 'node:20-alpine'}'`];
+        if (f.args) L.push(`${p2+ind(1)}args '${f.args}'`);
+        L.push(`${p2}}`, `${p}}`);
+        return L;
+      }
+      case 'kubernetes': {
+        const L = [`${p}agent {`, `${p2}kubernetes {`];
+        if (f.yaml) {
+          L.push(`${p2+ind(1)}yaml '''`);
+          f.yaml.split('\n').forEach(line => L.push(`${p2+ind(1)}${line}`));
+          L.push(`${p2+ind(1)}'''`);
+        }
+        L.push(`${p2}}`, `${p}}`);
+        return L;
+      }
+      default:
+        return [`${p}agent any`];
+    }
+  }
+
+  // ─── Environment ─────────────────────────────────────────────────────────
+  function genEnvironment(b, depth) {
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}environment {`];
+    (b.fields.vars || '').split('\n').forEach(line => {
+      line = line.trim();
+      if (line) L.push(`${p2}${line}`);
+    });
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Options ─────────────────────────────────────────────────────────────
+  function genOptions(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}options {`];
+    if (f.timeout && f.timeout !== '0')      L.push(`${p2}timeout(time: ${f.timeout}, unit: 'MINUTES')`);
+    if (f.retry && f.retry !== '0')          L.push(`${p2}retry(${f.retry})`);
+    if (f.timestamps)                         L.push(`${p2}timestamps()`);
+    if (f.skipDefaultCheckout)               L.push(`${p2}skipDefaultCheckout(true)`);
+    if (f.buildDiscarder && f.buildDiscarder !== '0')
+      L.push(`${p2}buildDiscarder(logRotator(numToKeepStr: '${f.buildDiscarder}'))`);
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Parameters ──────────────────────────────────────────────────────────
+  function genParameters(b, depth) {
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}parameters {`];
+    (b.fields.params || '').split('\n').forEach(raw => {
+      raw = raw.trim();
+      if (!raw) return;
+      const parts = raw.split(':');
+      const type  = (parts[0] || 'string').trim().toLowerCase();
+      const name  = (parts[1] || 'PARAM').trim();
+      const def   = (parts[2] || '').trim();
+      const desc  = (parts[3] || '').trim();
+      if (type === 'boolean') {
+        L.push(`${p2}booleanParam(name: '${name}', defaultValue: ${def || 'false'}, description: '${desc}')`);
+      } else if (type === 'choice') {
+        const choices = def.split('|').map(c => `'${c.trim()}'`).join(', ');
+        L.push(`${p2}choice(name: '${name}', choices: [${choices}], description: '${desc}')`);
+      } else {
+        L.push(`${p2}string(name: '${name}', defaultValue: '${def}', description: '${desc}')`);
+      }
+    });
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Triggers ────────────────────────────────────────────────────────────
+  function genTriggers(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}triggers {`];
+    if (f.cron)     L.push(`${p2}cron('${f.cron}')`);
+    if (f.pollSCM)  L.push(`${p2}pollSCM('${f.pollSCM}')`);
+    if (f.upstream) L.push(`${p2}upstream(upstreamProjects: '${f.upstream}', threshold: hudson.model.Result.SUCCESS)`);
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Stages ──────────────────────────────────────────────────────────────
+  function genStages(b, depth) {
+    const p  = ind(depth);
+    const L  = [`${p}stages {`];
+    childrenOf(b.id)
+      .filter(c => c.type === 'stage')
+      .forEach(s => L.push(...genStage(s, depth + 1)));
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Stage ───────────────────────────────────────────────────────────────
+  function genStage(b, depth) {
+    const p   = ind(depth);
+    const p2  = ind(depth + 1);
+    const ch  = childrenOf(b.id);
+    const L   = [`${p}stage('${b.fields.name || 'Stage'}') {`];
+
+    const agent    = ch.find(c => c.type === 'agent');
+    const when     = ch.find(c => c.type === 'when');
+    const stepsBlk = ch.find(c => c.type === 'steps');
+    const paralBlk = ch.find(c => c.type === 'parallel');
+    const post     = ch.find(c => c.type === 'post');
+
+    if (agent)    L.push(...genAgent(agent, depth + 1));
+    if (when)     L.push(...genWhen(when, depth + 1));
+    if (stepsBlk) L.push(...genStepsBlock(stepsBlk, depth + 1));
+    if (paralBlk) L.push(...genParallel(paralBlk, depth + 1));
+    if (post)     L.push(...genPost(post, depth + 1));
+
+    if (!stepsBlk && !paralBlk) {
+      L.push(`${p2}steps {`);
+      L.push(`${ind(depth + 2)}// Drop sh, echo, script, or other step components inside a Steps block`);
+      L.push(`${p2}}`);
+    }
+
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── When ────────────────────────────────────────────────────────────────
+  function genWhen(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}when {`];
+    switch (f.condition) {
+      case 'branch':
+        L.push(`${p2}branch '${f.branch || 'main'}'`);
+        break;
+      case 'environment':
+        L.push(`${p2}environment name: '${f.envName || 'DEPLOY'}', value: '${f.envValue || 'true'}'`);
+        break;
+      case 'expression':
+        L.push(`${p2}expression { ${f.expression || "env.BRANCH_NAME == 'main'"} }`);
+        break;
+      case 'tag':
+        L.push(`${p2}tag '${f.tag || 'v*'}'`);
+        break;
+      case 'changeRequest':
+        L.push(`${p2}changeRequest()`);
+        break;
+      case 'not':
+        L.push(`${p2}not { branch 'main' }`);
+        break;
+      default:
+        L.push(`${p2}branch '${f.branch || 'main'}'`);
+    }
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Steps block ─────────────────────────────────────────────────────────
+  function genStepsBlock(b, depth) {
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}steps {`];
+    childrenOf(b.id).forEach(s => {
+      L.push(...genStep(s, depth + 1));
+    });
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Individual step ─────────────────────────────────────────────────────
+  function genStep(b, depth) {
+    const f = b.fields;
+    const p = ind(depth);
+    switch (b.type) {
+      case 'sh':    return genSh(b, depth);
+      case 'echo':  return [`${p}echo '${(f.message || '').replace(/'/g, "\\'")}'`];
+      case 'script': {
+        const L = [`${p}script {`];
+        (f.code || '').split('\n').forEach(line => L.push(`${ind(depth + 1)}${line}`));
+        L.push(`${p}}`);
+        return L;
+      }
+      case 'checkout':         return genCheckout(b, depth);
+      case 'withCredentials':  return genWithCredentials(b, depth);
+      case 'retry':            return genRetry(b, depth);
+      case 'timeout':          return genTimeout(b, depth);
+      default: return [`${p}// unknown step: ${b.type}`];
+    }
+  }
+
+  function genSh(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const script = f.script || '';
+    const isMultiLine = script.includes('\n');
+    const L  = [];
+    const opts = [];
+    if (f.returnStdout) opts.push('returnStdout: true');
+    if (f.returnStatus) opts.push('returnStatus: true');
+    if (f.label)        opts.push(`label: '${f.label}'`);
+
+    if (isMultiLine || opts.length) {
+      const args = [`script: '''\n${script.split('\n').map(l => `${ind(depth + 1)}${l}`).join('\n')}\n${p}'''`];
+      if (opts.length) args.push(...opts);
+      L.push(`${p}sh(${args.join(', ')})`);
+    } else {
+      const prefix = opts.length ? `sh(script: '${script.replace(/'/g,"\\'")}', ${opts.join(', ')})` : `sh '${script.replace(/'/g,"\\'")}'`;
+      L.push(`${p}${prefix}`);
+    }
+    return L;
+  }
+
+  function genCheckout(b, depth) {
+    const f = b.fields;
+    const p = ind(depth);
+    const p2 = ind(depth + 1);
+    const p3 = ind(depth + 2);
+    const p4 = ind(depth + 3);
+    if (f.type === 'scm') return [`${p}checkout scm`];
+    const L = [`${p}checkout([`];
+    L.push(`${p2}$class: 'GitSCM',`);
+    L.push(`${p2}branches: [[name: '${f.branch || '*/main'}']],`);
+    L.push(`${p2}userRemoteConfigs: [[`);
+    L.push(`${p3}url: '${f.url || 'https://github.com/org/repo.git'}'${f.credentialsId ? ',' : ''}`);
+    if (f.credentialsId) L.push(`${p3}credentialsId: '${f.credentialsId}'`);
+    L.push(`${p2}]]`);
+    L.push(`${p}])`);
+    return L;
+  }
+
+  function genWithCredentials(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const p3 = ind(depth + 2);
+    let binding = '';
+    switch (f.type) {
+      case 'usernamePassword':
+        binding = `usernamePassword(credentialsId: '${f.credentialsId}', usernameVariable: '${f.usernameVar || 'USERNAME'}', passwordVariable: '${f.passwordVar || 'PASSWORD'}')`;
+        break;
+      case 'string':
+        binding = `string(credentialsId: '${f.credentialsId}', variable: '${f.variable || 'SECRET_TOKEN'}')`;
+        break;
+      case 'sshUserPrivateKey':
+        binding = `sshUserPrivateKey(credentialsId: '${f.credentialsId}', keyFileVariable: '${f.keyFileVar || 'SSH_KEY'}')`;
+        break;
+      case 'file':
+        binding = `file(credentialsId: '${f.credentialsId}', variable: '${f.variable || 'SECRET_FILE'}')`;
+        break;
+      default:
+        binding = `string(credentialsId: '${f.credentialsId}', variable: '${f.variable || 'TOKEN'}')`;
+    }
+    const L = [`${p}withCredentials([${binding}]) {`];
+    (f.steps || '').split('\n').forEach(line => {
+      line = line.trim();
+      if (line) L.push(`${p2}${line}`);
+    });
+    L.push(`${p}}`);
+    return L;
+  }
+
+  function genRetry(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}retry(${f.count || 3}) {`];
+    (f.steps || '').split('\n').forEach(line => {
+      line = line.trim();
+      if (line) L.push(`${p2}${line}`);
+    });
+    L.push(`${p}}`);
+    return L;
+  }
+
+  function genTimeout(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}timeout(time: ${f.time || 30}, unit: '${f.unit || 'MINUTES'}') {`];
+    (f.steps || '').split('\n').forEach(line => {
+      line = line.trim();
+      if (line) L.push(`${p2}${line}`);
+    });
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Parallel ────────────────────────────────────────────────────────────
+  function genParallel(b, depth) {
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const L  = [`${p}parallel {`];
+    if (b.fields.failFast) L.push(`${p2}failFast true`);
+    childrenOf(b.id)
+      .filter(c => c.type === 'parallelBranch')
+      .forEach(br => L.push(...genParallelBranch(br, depth + 1)));
+    L.push(`${p}}`);
+    return L;
+  }
+
+  function genParallelBranch(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const p3 = ind(depth + 2);
+    const p4 = ind(depth + 3);
+    const L  = [`${p}stage('${f.name || 'Branch'}') {`];
+    if (f.agent) L.push(`${p2}agent { label '${f.agent}' }`);
+    L.push(`${p2}steps {`);
+    (f.steps || '').split('\n').forEach(line => {
+      line = line.trim();
+      if (line) L.push(`${p3}${line}`);
+    });
+    L.push(`${p2}}`);
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Post ────────────────────────────────────────────────────────────────
+  function genPost(b, depth) {
+    const f  = b.fields;
+    const p  = ind(depth);
+    const p2 = ind(depth + 1);
+    const p3 = ind(depth + 2);
+    const L  = [`${p}post {`];
+    const conditions = [
+      {k:'always',   label:'always'},
+      {k:'success',  label:'success'},
+      {k:'failure',  label:'failure'},
+      {k:'unstable', label:'unstable'},
+      {k:'aborted',  label:'aborted'},
+      {k:'changed',  label:'changed'},
+    ];
+    conditions.forEach(cond => {
+      const val = (f[cond.k] || '').trim();
+      if (val) {
+        L.push(`${p2}${cond.label} {`);
+        val.split('\n').forEach(line => {
+          line = line.trim();
+          if (line) L.push(`${p3}${line}`);
+        });
+        L.push(`${p2}}`);
+      }
+    });
+    L.push(`${p}}`);
+    return L;
+  }
+
+  // ─── Copy / Download ─────────────────────────────────────────────────────
+  function copyConfig() {
+    const text = document.getElementById('configOutput').textContent;
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
+  }
+
+  function downloadConfig() {
+    const text = document.getElementById('configOutput').textContent;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type:'text/plain'}));
+    a.download = 'Jenkinsfile';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function showToast(msg) {
+    const el = document.createElement('div');
+    el.className = 'alert alert-dark py-2 px-3 mb-2';
+    el.style.fontSize = '0.78rem';
+    el.textContent = msg;
+    document.getElementById('toastContainer').prepend(el);
+    setTimeout(() => el.remove(), 2200);
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  buildPalette();
+  wireDropZone(document.getElementById('rootZone'), null);
+  render();
+  </script>
+</body>
+</html>
