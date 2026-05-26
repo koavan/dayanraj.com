@@ -74,30 +74,12 @@
 
     /* Question-mark tip icon */
     .palette-tip {
-      position: relative;
       display: inline-flex; align-items: center; justify-content: center;
       flex-shrink: 0; width: 15px; height: 15px; border-radius: 50%;
       background: #e9ecef; color: #6c757d; font-size: 0.62rem; font-weight: 700;
       cursor: help; line-height: 1; transition: background 0.12s, color 0.12s;
     }
     .palette-tip:hover { background: #0d6efd; color: #fff; }
-
-    /* Tooltip */
-    .tip-tooltip {
-      display: none;
-      position: fixed;
-      z-index: 9000;
-      max-width: 220px;
-      background: #1e293b;
-      color: #e2e8f0;
-      font-size: 0.72rem;
-      line-height: 1.5;
-      padding: 0.5rem 0.65rem;
-      border-radius: 0.35rem;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-      pointer-events: none;
-    }
-    .palette-tip:hover .tip-tooltip { display: block; }
 
     /* External-link doc icon */
     .palette-doc {
@@ -589,19 +571,6 @@
   }
 
   // ─── Drag & Drop ─────────────────────────────────────────────────────────
-  function wirePaletteItem(el, type) {
-    el.draggable = true;
-    el.addEventListener('dragstart', e => {
-      dragType = type;
-      el.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'copy';
-    });
-    el.addEventListener('dragend', () => {
-      dragType = null;
-      el.classList.remove('dragging');
-    });
-  }
-
   function wireDropZone(zone, parentId) {
     zone.addEventListener('dragover', e => {
       if (!dragType) return;
@@ -718,7 +687,12 @@
 
   // ─── Build palette ────────────────────────────────────────────────────────
   function buildPalette() {
-    const pal = document.getElementById('palette');
+    const pal    = document.getElementById('palette');
+    const extSvg =
+      `<svg width="11" height="11" viewBox="0 0 24 24">` +
+      `<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>` +
+      `<polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>` +
+      `</svg>`;
 
     PALETTE_SECTIONS.forEach(sec => {
       const heading = document.createElement('div');
@@ -729,60 +703,26 @@
       sec.types.forEach(type => {
         const def  = DEFS[type];
         const item = document.createElement('div');
-        item.className = 'palette-item';
-
-        // Tip icon with tooltip
-        const tipEl = document.createElement('span');
-        tipEl.className = 'palette-tip';
-        tipEl.textContent = '?';
-        const tooltipEl = document.createElement('span');
-        tooltipEl.className = 'tip-tooltip';
-        tooltipEl.textContent = def.tip;
-        tipEl.appendChild(tooltipEl);
-
-        // Tooltip positioning on mouse move
-        tipEl.addEventListener('mousemove', e => {
-          const tt = tipEl.querySelector('.tip-tooltip');
-          const pad = 10;
-          let x = e.clientX + pad;
-          let y = e.clientY + pad;
-          tt.style.display = 'block';
-          const rect = tt.getBoundingClientRect();
-          if (x + rect.width > window.innerWidth - pad) x = e.clientX - rect.width - pad;
-          if (y + rect.height > window.innerHeight - pad) y = e.clientY - rect.height - pad;
-          tt.style.left = x + 'px';
-          tt.style.top  = y + 'px';
+        item.className    = 'palette-item';
+        item.draggable    = true;
+        item.dataset.type = type;
+        item.innerHTML    =
+          `<span class="palette-item-name">${def.icon} ${def.label}</span>` +
+          `<a class="palette-doc" href="${def.docUrl}" target="_blank" rel="noopener" draggable="false" onclick="event.stopPropagation()" title="Jenkins documentation">${extSvg}</a>` +
+          `<span class="palette-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="${ea(def.tip)}">?</span>`;
+        item.addEventListener('dragstart', e => {
+          dragType = type;
+          item.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'copy';
         });
-        tipEl.addEventListener('mouseleave', () => {
-          const tt = tipEl.querySelector('.tip-tooltip');
-          tt.style.display = 'none';
-        });
-
-        // Doc icon (external link)
-        const docEl = document.createElement('a');
-        docEl.className = 'palette-doc';
-        docEl.href      = def.docUrl;
-        docEl.target    = '_blank';
-        docEl.rel       = 'noopener noreferrer';
-        docEl.title     = 'Jenkins documentation';
-        docEl.innerHTML = `<svg viewBox="0 0 24 24" width="10" height="10">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/>
-          <line x1="10" y1="14" x2="21" y2="3"/>
-        </svg>`;
-
-        const nameEl = document.createElement('span');
-        nameEl.className = 'palette-item-name';
-        nameEl.textContent = `${def.icon} ${def.label}`;
-
-        item.appendChild(tipEl);
-        item.appendChild(nameEl);
-        item.appendChild(docEl);
-
-        wirePaletteItem(item, type);
+        item.addEventListener('dragend', () => item.classList.remove('dragging'));
         pal.appendChild(item);
       });
     });
+
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el =>
+      new bootstrap.Tooltip(el, { trigger: 'hover', delay: { show: 100, hide: 0 } })
+    );
   }
 
   // ─── Jenkinsfile generation ───────────────────────────────────────────────
