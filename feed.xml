@@ -2,9 +2,9 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Dayan Raj</title>
-    <link>https://dayanraj.com/</link>
+    <link>https://www.dayanraj.com/</link>
     <description>DevSecOps Engineer — embedded systems, IoT, and cloud infrastructure.</description>
     <language>en-us</language>
-<atom:link href="https://dayanraj.com/feed.xml" rel="self" type="application/rss+xml"/>
+<atom:link href="https://www.dayanraj.com/feed.xml" rel="self" type="application/rss+xml"/>
   </channel>
 </rss>
