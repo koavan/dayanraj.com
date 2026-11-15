@@ -1,26 +1,25 @@
+// Runs in <head> so the theme is applied before first paint (no flash).
 (function () {
-  var stored = localStorage.getItem('theme');
-  var preferred = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  var theme = stored || preferred;
-  document.documentElement.dataset.theme = theme;
+  var root = document.documentElement;
+  var stored = null;
+  try { stored = localStorage.getItem('theme'); } catch (e) {}
 
-  function setIcon(t) {
-    var btn = document.getElementById('theme-toggle');
-    if (btn) btn.querySelector('.theme-icon').textContent = t === 'dark' ? '☀' : '☽';
+  // Pages can pin a theme with <html data-theme-lock="light"> (used by the tools).
+  var lock = root.getAttribute('data-theme-lock');
+  var preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  root.dataset.theme = lock || stored || preferred;
+
+  function toggle() {
+    var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch (e) {}
   }
-
-  window.__toggleTheme = function () {
-    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem('theme', next);
-    setIcon(next);
-  };
 
   document.addEventListener('DOMContentLoaded', function () {
     var btn = document.getElementById('theme-toggle');
-    if (btn) {
-      btn.addEventListener('click', window.__toggleTheme);
-      setIcon(document.documentElement.dataset.theme);
-    }
+    if (btn) btn.addEventListener('click', toggle);
+
+    var year = document.getElementById('year');
+    if (year) year.textContent = new Date().getFullYear();
   });
 })();

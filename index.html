@@ -13,10 +13,14 @@
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://www.dayanraj.com/assets/img/og-default.png">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d0d11" media="(prefers-color-scheme: dark)">
 
   <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <script src="/assets/js/theme.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="/assets/css/main.css">
 
   <script type="application/ld+json">
@@ -33,109 +37,148 @@
   }
   </script>
 </head>
-<body>
+<body class="site">
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg bg-dark navbar-dark">
-    <div class="container">
-      <a class="navbar-brand fw-semibold" href="/">Dayan Raj</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="mainNav">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item"><a class="nav-link" href="/about.html">About</a></li>
-          <li class="nav-item">
-            <a class="nav-link" href="https://github.com/koavan" target="_blank" rel="noopener">GitHub</a>
-          </li>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="/"><span class="brand-mark">DR</span><span class="brand-name">Dayan Raj</span></a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/about.html">About</a>
+        <a href="/#tools">Tools</a>
+        <a href="https://github.com/koavan" target="_blank" rel="noopener">GitHub</a>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode">
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="eyebrow"><span class="dot" aria-hidden="true"></span>DevSecOps Engineer · Rently · Camarillo, CA</span>
+          <h1>Dayan Raj.<br>The guy with an <span class="serif">M-shaped</span> mind.</h1>
+          <p class="lede">
+            Deep expertise across embedded systems, IoT, and cloud DevSecOps. I've spent over a decade
+            building things that matter, from firmware to secure infrastructure at scale.
+          </p>
+          <div class="btn-row">
+            <a href="/about.html" class="button button--primary">
+              About me
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <a href="https://github.com/koavan" class="button" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://www.linkedin.com/in/dayan-raj/" class="button" target="_blank" rel="noopener">LinkedIn</a>
+          </div>
+        </div>
+
+        <figure class="m-figure" aria-label="Diagram: broad systems knowledge on top, with three deep specialisms below">
+          <figcaption><span>fig.1 — the M-shaped profile</span><span>2013 → now</span></figcaption>
+          <div class="m-breadth">breadth · systems thinking across the stack</div>
+          <div class="m-pillars">
+            <div class="m-pillar">
+              <div class="m-bar" style="--depth:72%; --delay:.1s"></div>
+              <div class="m-label">Embedded &amp; IoT<small>2013 – 2017</small></div>
+            </div>
+            <div class="m-pillar">
+              <div class="m-bar" style="--depth:58%; --delay:.25s"></div>
+              <div class="m-label">Teaching<small>2017 – 2019</small></div>
+            </div>
+            <div class="m-pillar">
+              <div class="m-bar" style="--depth:84%; --delay:.4s"></div>
+              <div class="m-label">DevSecOps<small>2019 – now</small></div>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <div class="wrap">
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value"><span data-years-since="2019-08">7</span>+</div>
+          <div class="stat-label">Years at Rently</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value"><span data-years-since="2013-06">13</span>+</div>
+          <div class="stat-label">Years in tech</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">2</div>
+          <div class="stat-label">Countries, India → US</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">3</div>
+          <div class="stat-label">Free DevOps tools</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools -->
+    <section class="section" id="tools">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Tools</span>
+            <h2 style="margin-top:10px">Config generators, <span class="serif">drag &amp; drop.</span></h2>
+            <p>Build the files you'd normally hand-write, visually. Everything runs in your browser — nothing is sent anywhere.</p>
+          </div>
+        </div>
+
+        <div class="tool-grid">
+          <a class="tool-card" href="/tools/nginx-config/">
+            <div class="tool-top"><span>01</span><span class="file-chip">nginx.conf</span></div>
+            <h3>Nginx Config Generator</h3>
+            <p>Graphically build nginx server configurations using drag and drop components. Generates a ready-to-use nginx.conf.</p>
+            <span class="tool-go">Open tool <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          </a>
+          <a class="tool-card" href="/tools/k8s-manifest/">
+            <div class="tool-top"><span>02</span><span class="file-chip">manifest.yaml</span></div>
+            <h3>Kubernetes Manifest Generator</h3>
+            <p>Build Kubernetes manifests from components. Generates ready-to-use YAML for Deployments, Services, Ingress, and more.</p>
+            <span class="tool-go">Open tool <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          </a>
+          <a class="tool-card" href="/tools/jenkinsfile/">
+            <div class="tool-top"><span>03</span><span class="file-chip">Jenkinsfile</span></div>
+            <h3>Jenkinsfile Generator</h3>
+            <p>Build Declarative Jenkinsfiles with stages, steps, agents, and post actions. Generates a ready-to-use pipeline.</p>
+            <span class="tool-go">Open tool <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="section">
+      <div class="wrap contact">
+        <h2>Let's talk pipelines, <span class="serif">platforms</span> &amp; security.</h2>
+        <ul class="link-list">
+          <li><a href="https://www.linkedin.com/in/dayan-raj/" target="_blank" rel="noopener">LinkedIn <span class="mono">in/dayan-raj ↗</span></a></li>
+          <li><a href="https://github.com/koavan" target="_blank" rel="noopener">GitHub <span class="mono">@koavan ↗</span></a></li>
+          <li><a href="/about.html">Experience <span class="mono">about →</span></a></li>
         </ul>
       </div>
-    </div>
-  </nav>
+    </section>
+  </main>
 
-  <!-- Hero -->
-  <div class="bg-light border-bottom py-5">
-    <div class="container">
-      <div class="row align-items-center g-4">
-        <div class="col-12">
-          <span class="badge bg-primary mb-3">DevSecOps Engineer · Rently</span>
-          <h1 class="display-5 fw-bold mb-3">Hi, I'm Dayan Raj</h1>
-          <p class="lead text-muted mb-4">
-            The guy with an M-Shaped mind — deep expertise across embedded systems, IoT, and cloud DevSecOps.
-            I've spent a decade building things that matter, from firmware to secure infrastructure at scale.
-            Based in Camarillo, California.
-          </p>
-          <div class="d-flex flex-wrap gap-2">
-            <a href="/about.html" class="btn btn-primary">About me</a>
-            <a href="https://github.com/koavan" class="btn btn-outline-dark" target="_blank" rel="noopener">GitHub</a>
-            <a href="https://www.linkedin.com/in/dayan-raj/" class="btn btn-outline-dark" target="_blank" rel="noopener">LinkedIn</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Stats row -->
-  <div class="border-bottom">
-    <div class="container">
-      <div class="row text-center py-3">
-        <div class="col-4 col-md-2 py-2">
-          <div class="fw-bold fs-4">7+</div>
-          <div class="text-muted small">Years at Rently</div>
-        </div>
-        <div class="col-4 col-md-2 py-2">
-          <div class="fw-bold fs-4">10+</div>
-          <div class="text-muted small">Years in tech</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tools section -->
-  <div class="container py-5">
-    <div class="row">
-      <div class="col-12">
-        <h5 class="fw-semibold mb-3">Tools</h5>
-      </div>
-      <div class="col-md-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <h6 class="card-title fw-semibold mb-1">Nginx Config Generator</h6>
-            <p class="card-text text-muted small mb-3">Graphically build nginx server configurations using drag and drop components. Generates a ready-to-use nginx.conf.</p>
-            <a href="/tools/nginx-config/" class="btn btn-sm btn-primary">Open tool</a>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <h6 class="card-title fw-semibold mb-1">Kubernetes Manifest Generator</h6>
-            <p class="card-text text-muted small mb-3">Graphically build Kubernetes manifests using drag and drop components. Generates ready-to-use YAML for Deployments, Services, Ingress, and more.</p>
-            <a href="/tools/k8s-manifest/" class="btn btn-sm btn-primary">Open tool</a>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <h6 class="card-title fw-semibold mb-1">Jenkinsfile Generator</h6>
-            <p class="card-text text-muted small mb-3">Graphically build Declarative Jenkinsfiles using drag and drop components. Generates ready-to-use pipelines with stages, steps, agents, and post actions.</p>
-            <a href="/tools/jenkinsfile/" class="btn btn-sm btn-primary">Open tool</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <footer class="bg-dark text-white-50 py-4 mt-auto">
-    <div class="container d-flex flex-wrap justify-content-between align-items-center">
-      <p class="mb-0">&copy; <span id="year"></span> Dayan Raj</p>
-      <p class="mb-0 small">Built with HTML, CSS &amp; Bootstrap</p>
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>&copy; <span id="year">2026</span> Dayan Raj</span>
+      <span>Hand-written HTML &amp; CSS</span>
     </div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script>
+    document.querySelectorAll('[data-years-since]').forEach(function (el) {
+      var p = el.dataset.yearsSince.split('-').map(Number);
+      var now = new Date();
+      var months = (now.getFullYear() - p[0]) * 12 + (now.getMonth() + 1 - p[1]);
+      el.textContent = Math.floor(months / 12);
+    });
+  </script>
 </body>
 </html>
