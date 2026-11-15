@@ -413,6 +413,31 @@ body.site {
 .tool-card .tool-go svg { width: 16px; height: 16px; transition: transform 0.2s; }
 .tool-card:hover .tool-go svg { transform: translateX(4px); }
 
+/* ---------- Project cards ---------- */
+.project-card {
+  padding: clamp(24px, 4vw, 40px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.project-card .tool-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.project-card .file-chip {
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.project-card h3 { font-size: clamp(22px, 2.6vw, 28px); margin-bottom: 12px; }
+.project-card p { color: var(--text-2); font-size: 16px; max-width: 46em; margin-bottom: 24px; }
+
 /* ---------- Contact band ---------- */
 .contact {
   display: grid;
