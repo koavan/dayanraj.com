@@ -18,6 +18,7 @@ aws s3 sync . "s3://$BUCKET" \
   --delete \
   --exclude ".git/*" \
   --exclude ".gitignore" \
+  --exclude ".claude/*" \
   --exclude "scripts/*" \
   --exclude "*.sh" \
   --exclude "*.md" \
